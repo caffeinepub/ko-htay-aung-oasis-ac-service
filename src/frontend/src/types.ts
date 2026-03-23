@@ -39,4 +39,32 @@ export interface CallLog {
   context: string;
 }
 
+export interface SaleItem {
+  id: string;
+  date: string;
+  deviceType: string;
+  brand: string;
+  model: string;
+  quantity: number;
+  unitPrice: number;
+  totalPrice: number;
+  customerName: string;
+  notes: string;
+  createdAt: number;
+}
+
+export interface PurchaseItem {
+  id: string;
+  date: string;
+  deviceType: string;
+  brand: string;
+  model: string;
+  quantity: number;
+  unitPrice: number;
+  totalPrice: number;
+  supplierName: string;
+  notes: string;
+  createdAt: number;
+}
+
 export type Language = "en" | "my";

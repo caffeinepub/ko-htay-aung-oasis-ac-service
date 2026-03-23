@@ -35,6 +35,9 @@ import {
   History,
   Home,
   Info,
+  KeyRound,
+  LogIn,
+  LogOut,
   MapPin,
   Moon,
   Pencil,
@@ -43,6 +46,8 @@ import {
   Search,
   Settings,
   Share2,
+  ShieldCheck,
+  ShoppingBag,
   Sun,
   Trash2,
   User,
@@ -70,13 +75,234 @@ import {
   loadCallLogs,
   loadJobs,
   loadLanguage,
+  loadPurchases,
+  loadSales,
   loadStaff,
   saveCallLogs,
   saveJobs,
   saveLanguage,
+  savePurchases,
+  saveSales,
   saveStaff,
 } from "./storage";
-import type { CallLog, Job, Language, Staff } from "./types";
+import type {
+  CallLog,
+  Job,
+  Language,
+  PurchaseItem,
+  SaleItem,
+  Staff,
+} from "./types";
+
+// ─── Auth Helpers ────────────────────────────────────────────────────────────
+const DEFAULT_CREDENTIALS = { username: "Oasis", password: "oasis2000" };
+
+function loadCredentials(): { username: string; password: string } {
+  try {
+    const raw = localStorage.getItem("oasis_credentials");
+    if (raw) return JSON.parse(raw);
+  } catch {}
+  return DEFAULT_CREDENTIALS;
+}
+
+function saveCredentials(creds: { username: string; password: string }) {
+  localStorage.setItem(
+    "oasis_credentials",
+    JSON.stringify({
+      username: creds.username.trim(),
+      password: creds.password.trim(),
+    }),
+  );
+}
+
+function isLoggedIn(): boolean {
+  return sessionStorage.getItem("oasis_session") === "true";
+}
+
+function setSession() {
+  sessionStorage.setItem("oasis_session", "true");
+}
+
+function clearSession() {
+  sessionStorage.removeItem("oasis_session");
+}
+
+// ─── Login Screen ─────────────────────────────────────────────────────────────
+function LoginScreen({ onLogin }: { onLogin: () => void }) {
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
+  const [showPw, setShowPw] = useState(false);
+  const [showReset, setShowReset] = useState(false);
+  const [resetDone, setResetDone] = useState(false);
+
+  function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    const creds = loadCredentials();
+    if (
+      username.trim() === creds.username &&
+      password.trim() === creds.password
+    ) {
+      setSession();
+      onLogin();
+    } else {
+      setError("Username သို့မဟုတ် Password မှားနေသည် / Invalid credentials");
+    }
+  }
+
+  return (
+    <div className="min-h-screen bg-background flex items-center justify-center p-4">
+      <div className="w-full max-w-[360px]">
+        <div className="flex flex-col items-center mb-8">
+          <div className="w-16 h-16 rounded-2xl bg-primary flex items-center justify-center mb-4 shadow-lg">
+            <Wrench size={30} className="text-primary-foreground" />
+          </div>
+          <p className="text-xs text-muted-foreground">Ko Htay Aung</p>
+          <h1 className="text-xl font-bold text-foreground">
+            Oasis AC Service
+          </h1>
+        </div>
+        <Card className="border-border shadow-md">
+          <CardContent className="p-6">
+            <div className="flex items-center gap-2 mb-5">
+              <ShieldCheck size={18} className="text-primary" />
+              <p className="font-semibold text-sm">Login / ဝင်ရောက်ရန်</p>
+            </div>
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div className="space-y-1.5">
+                <Label htmlFor="login-username" className="text-xs">
+                  Username
+                </Label>
+                <Input
+                  id="login-username"
+                  value={username}
+                  onChange={(e) => {
+                    setUsername(e.target.value);
+                    setError("");
+                  }}
+                  placeholder="Username ရိုက်ထည့်ပါ"
+                  autoComplete="username"
+                  data-ocid="login.input"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="login-password" className="text-xs">
+                  Password
+                </Label>
+                <div className="relative">
+                  <Input
+                    id="login-password"
+                    type={showPw ? "text" : "password"}
+                    value={password}
+                    onChange={(e) => {
+                      setPassword(e.target.value);
+                      setError("");
+                    }}
+                    placeholder="Password ရိုက်ထည့်ပါ"
+                    autoComplete="current-password"
+                    data-ocid="login.input"
+                    className="pr-10"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPw(!showPw)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  >
+                    {showPw ? "🙈" : "👁️"}
+                  </button>
+                </div>
+              </div>
+              {error && (
+                <p
+                  className="text-xs text-destructive"
+                  data-ocid="login.error_state"
+                >
+                  {error}
+                </p>
+              )}
+              <Button
+                type="submit"
+                className="w-full"
+                data-ocid="login.submit_button"
+              >
+                <LogIn size={16} className="mr-2" />
+                Login / ဝင်ရောက်မည်
+              </Button>
+              <div className="text-center mt-2">
+                <button
+                  type="button"
+                  className="text-xs text-muted-foreground hover:text-primary underline-offset-2 hover:underline"
+                  onClick={() => {
+                    setShowReset(true);
+                    setResetDone(false);
+                  }}
+                >
+                  Password မေ့သွားပါသလား?
+                </button>
+              </div>
+            </form>
+            {showReset && (
+              <div className="mt-4 rounded-lg border border-border bg-muted/50 p-4 text-sm space-y-3">
+                {resetDone ? (
+                  <div className="text-center space-y-2">
+                    <p className="text-green-600 font-semibold text-xs">
+                      ✓ Reset ပြီးပါပြီ
+                    </p>
+                    <button
+                      type="button"
+                      className="text-xs text-primary hover:underline"
+                      onClick={() => setShowReset(false)}
+                    >
+                      ပိတ်မည်
+                    </button>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    <p className="text-xs font-medium">
+                      Default credentials သို့ပြန်ရမည်လား?
+                    </p>
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        className="flex-1 rounded-md bg-primary text-primary-foreground text-xs py-1.5 font-medium hover:bg-primary/90"
+                        onClick={() => {
+                          saveCredentials(DEFAULT_CREDENTIALS);
+                          setResetDone(true);
+                        }}
+                        data-ocid="login.confirm_button"
+                      >
+                        အတည်ပြုမည်
+                      </button>
+                      <button
+                        type="button"
+                        className="flex-1 rounded-md border border-border text-xs py-1.5 text-muted-foreground hover:bg-muted"
+                        onClick={() => setShowReset(false)}
+                        data-ocid="login.cancel_button"
+                      >
+                        မလုပ်တော့ပါ
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+        <p className="text-center text-xs text-muted-foreground mt-6">
+          © {new Date().getFullYear()}. Built with ❤️ using{" "}
+          <a
+            href={`https://caffeine.ai?utm_source=caffeine-footer&utm_medium=referral&utm_content=${encodeURIComponent(window.location.hostname)}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-primary hover:underline"
+          >
+            caffeine.ai
+          </a>
+        </p>
+      </div>
+    </div>
+  );
+}
 
 // ─── Language Context ─────────────────────────────────────────────────────────
 const LangCtx = createContext<{ lang: Language; tr: (k: TKey) => string }>({
@@ -2132,18 +2358,168 @@ function ReportsTab({ jobs }: { jobs: Job[] }) {
 }
 
 // ─── SETTINGS TAB ─────────────────────────────────────────────────────────────
+function LoginSettingsSection({ lang }: { lang: Language }) {
+  const [newUsername, setNewUsername] = useState("");
+  const [currentPw, setCurrentPw] = useState("");
+  const [newPw, setNewPw] = useState("");
+  const [confirmPw, setConfirmPw] = useState("");
+
+  function handleChangeUsername(e: React.FormEvent) {
+    e.preventDefault();
+    if (!newUsername.trim()) return;
+    const creds = loadCredentials();
+    saveCredentials({ ...creds, username: newUsername.trim() });
+    toast.success(
+      lang === "my" ? "Username ပြောင်းပြီးပါပြီ" : "Username updated",
+    );
+    setNewUsername("");
+  }
+
+  function handleChangePassword(e: React.FormEvent) {
+    e.preventDefault();
+    const creds = loadCredentials();
+    if (currentPw.trim() !== creds.password) {
+      toast.error(
+        lang === "my" ? "လက်ရှိ Password မှားသည်" : "Current password is wrong",
+      );
+      return;
+    }
+    if (newPw.length < 4) {
+      toast.error(
+        lang === "my"
+          ? "Password အနည်းဆုံး ၄ လုံး ရှိရမည်"
+          : "Password must be at least 4 characters",
+      );
+      return;
+    }
+    if (newPw !== confirmPw) {
+      toast.error(
+        lang === "my" ? "Password နှစ်ခု မတူညီပါ" : "Passwords do not match",
+      );
+      return;
+    }
+    saveCredentials({ ...creds, password: newPw.trim() });
+    toast.success(
+      lang === "my" ? "Password ပြောင်းပြီးပါပြီ" : "Password updated",
+    );
+    setCurrentPw("");
+    setNewPw("");
+    setConfirmPw("");
+  }
+
+  function handleReset() {
+    if (
+      window.confirm(
+        lang === "my" ? "Default credentials သို့ပြန်ရမည်လား?" : "Reset to default?",
+      )
+    ) {
+      saveCredentials(DEFAULT_CREDENTIALS);
+      toast.success(
+        lang === "my"
+          ? "Default credentials ပြန်သတ်မှတ်ပြီးပါပြီ"
+          : "Reset to default credentials",
+      );
+    }
+  }
+
+  return (
+    <div className="space-y-4">
+      {/* Change Username */}
+      <div>
+        <p className="text-xs font-semibold text-muted-foreground mb-2">
+          {lang === "my" ? "Username ပြောင်းရန်" : "Change Username"}
+        </p>
+        <form onSubmit={handleChangeUsername} className="flex gap-2">
+          <Input
+            value={newUsername}
+            onChange={(e) => setNewUsername(e.target.value)}
+            placeholder={lang === "my" ? "Username အသစ်" : "New username"}
+            className="text-sm"
+            data-ocid="settings.username.input"
+          />
+          <Button
+            type="submit"
+            size="sm"
+            disabled={!newUsername.trim()}
+            data-ocid="settings.username.save_button"
+          >
+            {lang === "my" ? "သိမ်းမည်" : "Save"}
+          </Button>
+        </form>
+      </div>
+      <Separator />
+      {/* Change Password */}
+      <div>
+        <p className="text-xs font-semibold text-muted-foreground mb-2">
+          {lang === "my" ? "Password ပြောင်းရန်" : "Change Password"}
+        </p>
+        <form onSubmit={handleChangePassword} className="space-y-2">
+          <Input
+            type="password"
+            value={currentPw}
+            onChange={(e) => setCurrentPw(e.target.value)}
+            placeholder={lang === "my" ? "လက်ရှိ Password" : "Current password"}
+            className="text-sm"
+            data-ocid="settings.current_password.input"
+          />
+          <Input
+            type="password"
+            value={newPw}
+            onChange={(e) => setNewPw(e.target.value)}
+            placeholder={lang === "my" ? "Password အသစ်" : "New password"}
+            className="text-sm"
+            data-ocid="settings.new_password.input"
+          />
+          <Input
+            type="password"
+            value={confirmPw}
+            onChange={(e) => setConfirmPw(e.target.value)}
+            placeholder={
+              lang === "my" ? "Password အသစ် အတည်ပြုမည်" : "Confirm new password"
+            }
+            className="text-sm"
+            data-ocid="settings.confirm_password.input"
+          />
+          <Button
+            type="submit"
+            size="sm"
+            className="w-full"
+            disabled={!currentPw || !newPw || !confirmPw}
+            data-ocid="settings.password.save_button"
+          >
+            {lang === "my" ? "Password ပြောင်းမည်" : "Change Password"}
+          </Button>
+        </form>
+      </div>
+      <Separator />
+      {/* Reset to Default */}
+      <Button
+        variant="outline"
+        size="sm"
+        className="w-full text-destructive border-destructive hover:bg-destructive/10"
+        onClick={handleReset}
+        data-ocid="settings.reset_credentials.button"
+      >
+        {lang === "my" ? "Default သို့ပြန်ရမည်" : "Reset to Default"}
+      </Button>
+    </div>
+  );
+}
+
 function SettingsTab({
   lang,
   onLangChange,
   theme,
   onThemeChange,
   onClearCallLogs,
+  onLogout,
 }: {
   lang: Language;
   onLangChange: (l: Language) => void;
   theme: "light" | "dark";
   onThemeChange: (t: "light" | "dark") => void;
   onClearCallLogs: () => void;
+  onLogout: () => void;
 }) {
   const { tr } = useLang();
   return (
@@ -2309,6 +2685,51 @@ function SettingsTab({
         </CardContent>
       </Card>
 
+      {/* Login Settings */}
+      <Card className="border-border shadow-xs">
+        <CardContent className="p-4">
+          <div className="flex items-center gap-3 mb-4">
+            <KeyRound size={18} className="text-primary" />
+            <p className="font-semibold text-sm">
+              {lang === "my" ? "Login ဆက်တင်များ" : "Login Settings"}
+            </p>
+          </div>
+          <LoginSettingsSection lang={lang} />
+        </CardContent>
+      </Card>
+
+      {/* Logout */}
+      <Card className="border-border shadow-xs">
+        <CardContent className="p-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <LogOut size={18} className="text-destructive" />
+              <p className="font-semibold text-sm text-destructive">
+                {lang === "my" ? "ထွက်မည်" : "Logout"}
+              </p>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              className="text-destructive border-destructive hover:bg-destructive/10"
+              data-ocid="settings.logout.button"
+              onClick={() => {
+                if (
+                  window.confirm(
+                    lang === "my" ? "App မှ ထွက်မည်လား?" : "Logout from app?",
+                  )
+                ) {
+                  onLogout();
+                }
+              }}
+            >
+              <LogOut size={14} className="mr-1" />
+              {lang === "my" ? "ထွက်မည်" : "Logout"}
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Footer */}
       <p className="text-center text-xs text-muted-foreground pb-2">
         © {new Date().getFullYear()}. Built with ❤️ using{" "}
@@ -2325,10 +2746,622 @@ function SettingsTab({
   );
 }
 
+// ─── INVENTORY TAB ────────────────────────────────────────────────────────────
+function InventoryTab({
+  lang,
+  sales,
+  setSales,
+  purchases,
+  setPurchases,
+}: {
+  lang: Language;
+  sales: SaleItem[];
+  setSales: (items: SaleItem[]) => void;
+  purchases: PurchaseItem[];
+  setPurchases: (items: PurchaseItem[]) => void;
+}) {
+  const tr = (key: TKey) => t[lang][key];
+  const [subTab, setSubTab] = useState<"sales" | "purchases">("sales");
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [editingItem, setEditingItem] = useState<
+    SaleItem | PurchaseItem | null
+  >(null);
+
+  const emptySaleForm = {
+    date: new Date().toISOString().slice(0, 10),
+    deviceType: "AC",
+    brand: "",
+    model: "",
+    quantity: 1,
+    unitPrice: 0,
+    customerName: "",
+    notes: "",
+  };
+  const emptyPurchaseForm = {
+    date: new Date().toISOString().slice(0, 10),
+    deviceType: "AC",
+    brand: "",
+    model: "",
+    quantity: 1,
+    unitPrice: 0,
+    supplierName: "",
+    notes: "",
+  };
+
+  const [form, setForm] = useState<
+    typeof emptySaleForm | typeof emptyPurchaseForm
+  >(emptySaleForm);
+
+  function openAdd() {
+    setEditingItem(null);
+    setForm(
+      subTab === "sales" ? { ...emptySaleForm } : { ...emptyPurchaseForm },
+    );
+    setDialogOpen(true);
+  }
+
+  function openEdit(item: SaleItem | PurchaseItem) {
+    setEditingItem(item);
+    if (subTab === "sales") {
+      const s = item as SaleItem;
+      setForm({
+        date: s.date,
+        deviceType: s.deviceType,
+        brand: s.brand,
+        model: s.model,
+        quantity: s.quantity,
+        unitPrice: s.unitPrice,
+        customerName: s.customerName,
+        notes: s.notes,
+      });
+    } else {
+      const p = item as PurchaseItem;
+      setForm({
+        date: p.date,
+        deviceType: p.deviceType,
+        brand: p.brand,
+        model: p.model,
+        quantity: p.quantity,
+        unitPrice: p.unitPrice,
+        supplierName: p.supplierName,
+        notes: p.notes,
+      });
+    }
+    setDialogOpen(true);
+  }
+
+  function handleSave() {
+    const totalPrice = (form.quantity ?? 0) * (form.unitPrice ?? 0);
+    if (subTab === "sales") {
+      const f = form as typeof emptySaleForm;
+      if (editingItem) {
+        const updated = sales.map((s) =>
+          s.id === editingItem.id ? { ...s, ...f, totalPrice } : s,
+        );
+        saveSales(updated);
+        setSales(updated);
+      } else {
+        const newItem: SaleItem = {
+          id: generateId(),
+          ...f,
+          totalPrice,
+          createdAt: Date.now(),
+        };
+        const updated = [newItem, ...sales];
+        saveSales(updated);
+        setSales(updated);
+      }
+    } else {
+      const f = form as typeof emptyPurchaseForm;
+      if (editingItem) {
+        const updated = purchases.map((p) =>
+          p.id === editingItem.id ? { ...p, ...f, totalPrice } : p,
+        );
+        savePurchases(updated);
+        setPurchases(updated);
+      } else {
+        const newItem: PurchaseItem = {
+          id: generateId(),
+          ...f,
+          totalPrice,
+          createdAt: Date.now(),
+        };
+        const updated = [newItem, ...purchases];
+        savePurchases(updated);
+        setPurchases(updated);
+      }
+    }
+    setDialogOpen(false);
+  }
+
+  function handleDelete(id: string) {
+    if (!window.confirm(tr("deleteConfirm"))) return;
+    if (subTab === "sales") {
+      const updated = sales.filter((s) => s.id !== id);
+      saveSales(updated);
+      setSales(updated);
+    } else {
+      const updated = purchases.filter((p) => p.id !== id);
+      savePurchases(updated);
+      setPurchases(updated);
+    }
+  }
+
+  const sortedSales = [...sales].sort((a, b) => (a.date < b.date ? 1 : -1));
+  const sortedPurchases = [...purchases].sort((a, b) =>
+    a.date < b.date ? 1 : -1,
+  );
+  const totalSales = sales.reduce((sum, s) => sum + s.totalPrice, 0);
+  const totalPurchases = purchases.reduce((sum, p) => sum + p.totalPrice, 0);
+
+  const deviceBadgeColor = (dt: string) => {
+    if (dt === "AC")
+      return "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300";
+    if (dt === "Refrigerator")
+      return "bg-cyan-100 text-cyan-700 dark:bg-cyan-900/30 dark:text-cyan-300";
+    return "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300";
+  };
+
+  const deviceLabel = (dt: string) => {
+    if (dt === "AC") return tr("ac");
+    if (dt === "Refrigerator") return tr("refrigerator");
+    return tr("washingMachine");
+  };
+
+  function exportInventoryPDF() {
+    const doc = new jsPDF();
+    const pageW = doc.internal.pageSize.getWidth();
+    const isSales = subTab === "sales";
+    const items = isSales ? sortedSales : sortedPurchases;
+    const total = isSales ? totalSales : totalPurchases;
+    const title = isSales
+      ? "Oasis AC Service - Sales Records"
+      : "Oasis AC Service - Purchase Records";
+    let y = 20;
+
+    doc.setFontSize(16);
+    doc.setFont("helvetica", "bold");
+    doc.text(title, pageW / 2, y, { align: "center" });
+    y += 10;
+
+    doc.setFontSize(10);
+    doc.setFont("helvetica", "normal");
+    const today = new Date().toISOString().slice(0, 10);
+    doc.text(`Generated: ${today}`, pageW / 2, y, { align: "center" });
+    y += 12;
+
+    // Summary box
+    doc.setDrawColor(34, 197, 94);
+    doc.setLineWidth(0.5);
+    doc.rect(14, y, pageW - 28, 16);
+    y += 10;
+    doc.setFont("helvetica", "bold");
+    doc.text(`Total Records: ${items.length}`, 20, y);
+    doc.text(`Total: ${formatMMK(total)}`, 100, y);
+    y += 16;
+
+    // Table header
+    doc.setFillColor(34, 197, 94);
+    doc.rect(14, y, pageW - 28, 8, "F");
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(9);
+    doc.text("Date", 16, y + 5.5);
+    doc.text("Device", 40, y + 5.5);
+    doc.text("Brand/Model", 75, y + 5.5);
+    doc.text("Qty", 120, y + 5.5);
+    doc.text(isSales ? "Customer" : "Supplier", 132, y + 5.5);
+    doc.text("Total", 168, y + 5.5);
+    y += 10;
+
+    doc.setTextColor(0, 0, 0);
+    doc.setFont("helvetica", "normal");
+    items.forEach((item, i) => {
+      if (y > 270) {
+        doc.addPage();
+        y = 20;
+      }
+      if (i % 2 === 0) {
+        doc.setFillColor(240, 253, 244);
+        doc.rect(14, y - 4, pageW - 28, 8, "F");
+      }
+      doc.text(item.date || "", 16, y);
+      doc.text(deviceLabel(item.deviceType).substring(0, 14), 40, y);
+      const bm = (
+        (item.brand || "") + (item.model ? ` ${item.model}` : "")
+      ).substring(0, 20);
+      doc.text(bm, 75, y);
+      doc.text(String(item.quantity), 120, y);
+      const party = isSales
+        ? (item as SaleItem).customerName
+        : (item as PurchaseItem).supplierName;
+      doc.text((party || "").substring(0, 16), 132, y);
+      doc.text(formatMMK(item.totalPrice), 162, y);
+      y += 8;
+    });
+
+    const fname = isSales
+      ? `oasis-sales-${today}.pdf`
+      : `oasis-purchases-${today}.pdf`;
+    doc.save(fname);
+    toast.success("PDF exported!");
+  }
+
+  const isSalesForm = subTab === "sales";
+
+  return (
+    <div className="flex flex-col h-full pb-20">
+      {/* Header */}
+      <div className="sticky top-0 z-10 bg-card border-b border-border px-4 py-3 flex items-center justify-between">
+        <h1 className="text-base font-bold text-foreground">
+          {tr("inventory")}
+        </h1>
+        <div className="flex gap-2">
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={exportInventoryPDF}
+            className="gap-1"
+            data-ocid="inventory.export_pdf_button"
+          >
+            <Download size={14} />
+            PDF
+          </Button>
+          <Button
+            size="sm"
+            onClick={openAdd}
+            className="gap-1"
+            data-ocid="inventory.primary_button"
+          >
+            <Plus size={16} />
+            {subTab === "sales" ? tr("addSale") : tr("addPurchase")}
+          </Button>
+        </div>
+      </div>
+
+      {/* Sub-tabs */}
+      <div className="flex mx-4 mt-3 mb-2 rounded-lg overflow-hidden border border-border">
+        <button
+          type="button"
+          onClick={() => setSubTab("sales")}
+          className={`flex-1 py-2 text-sm font-medium transition-colors ${subTab === "sales" ? "bg-primary text-primary-foreground" : "bg-card text-muted-foreground hover:bg-muted"}`}
+          data-ocid="inventory.sales.tab"
+        >
+          {tr("sales")}
+        </button>
+        <button
+          type="button"
+          onClick={() => setSubTab("purchases")}
+          className={`flex-1 py-2 text-sm font-medium transition-colors ${subTab === "purchases" ? "bg-primary text-primary-foreground" : "bg-card text-muted-foreground hover:bg-muted"}`}
+          data-ocid="inventory.purchases.tab"
+        >
+          {tr("purchases")}
+        </button>
+      </div>
+
+      {/* Summary card */}
+      <div className="mx-4 mb-3">
+        <Card className="bg-primary/5 border-primary/20">
+          <CardContent className="py-3 px-4">
+            <p className="text-xs text-muted-foreground">
+              {subTab === "sales"
+                ? tr("totalSalesRevenue")
+                : tr("totalPurchaseCost")}
+            </p>
+            <p className="text-xl font-bold text-primary">
+              {formatMMK(subTab === "sales" ? totalSales : totalPurchases)}
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* List */}
+      <div className="flex-1 overflow-y-auto px-4 space-y-2">
+        {subTab === "sales" &&
+          (sortedSales.length === 0 ? (
+            <p
+              className="text-center text-sm text-muted-foreground py-10"
+              data-ocid="inventory.sales.empty_state"
+            >
+              {tr("noSales")}
+            </p>
+          ) : (
+            sortedSales.map((item, idx) => (
+              <Card key={item.id} data-ocid={`inventory.sales.item.${idx + 1}`}>
+                <CardContent className="py-3 px-4">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-1 flex-wrap">
+                        <span
+                          className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${deviceBadgeColor(item.deviceType)}`}
+                        >
+                          {deviceLabel(item.deviceType)}
+                        </span>
+                        <span className="text-xs text-muted-foreground">
+                          {item.date}
+                        </span>
+                      </div>
+                      <p className="text-sm font-semibold text-foreground truncate">
+                        {item.brand} {item.model}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {item.quantity} × {formatMMK(item.unitPrice)} ={" "}
+                        <span className="font-semibold text-foreground">
+                          {formatMMK(item.totalPrice)}
+                        </span>
+                      </p>
+                      {item.customerName && (
+                        <p className="text-xs text-muted-foreground mt-0.5">
+                          {item.customerName}
+                        </p>
+                      )}
+                    </div>
+                    <div className="flex gap-1 shrink-0">
+                      <button
+                        type="button"
+                        onClick={() => openEdit(item)}
+                        className="p-1.5 rounded-md hover:bg-muted text-muted-foreground"
+                        data-ocid={`inventory.sales.edit_button.${idx + 1}`}
+                      >
+                        <Pencil size={14} />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleDelete(item.id)}
+                        className="p-1.5 rounded-md hover:bg-destructive/10 text-destructive"
+                        data-ocid={`inventory.sales.delete_button.${idx + 1}`}
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            ))
+          ))}
+        {subTab === "purchases" &&
+          (sortedPurchases.length === 0 ? (
+            <p
+              className="text-center text-sm text-muted-foreground py-10"
+              data-ocid="inventory.purchases.empty_state"
+            >
+              {tr("noPurchases")}
+            </p>
+          ) : (
+            sortedPurchases.map((item, idx) => (
+              <Card
+                key={item.id}
+                data-ocid={`inventory.purchases.item.${idx + 1}`}
+              >
+                <CardContent className="py-3 px-4">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-1 flex-wrap">
+                        <span
+                          className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${deviceBadgeColor(item.deviceType)}`}
+                        >
+                          {deviceLabel(item.deviceType)}
+                        </span>
+                        <span className="text-xs text-muted-foreground">
+                          {item.date}
+                        </span>
+                      </div>
+                      <p className="text-sm font-semibold text-foreground truncate">
+                        {item.brand} {item.model}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {item.quantity} × {formatMMK(item.unitPrice)} ={" "}
+                        <span className="font-semibold text-foreground">
+                          {formatMMK(item.totalPrice)}
+                        </span>
+                      </p>
+                      {item.supplierName && (
+                        <p className="text-xs text-muted-foreground mt-0.5">
+                          {item.supplierName}
+                        </p>
+                      )}
+                    </div>
+                    <div className="flex gap-1 shrink-0">
+                      <button
+                        type="button"
+                        onClick={() => openEdit(item)}
+                        className="p-1.5 rounded-md hover:bg-muted text-muted-foreground"
+                        data-ocid={`inventory.purchases.edit_button.${idx + 1}`}
+                      >
+                        <Pencil size={14} />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleDelete(item.id)}
+                        className="p-1.5 rounded-md hover:bg-destructive/10 text-destructive"
+                        data-ocid={`inventory.purchases.delete_button.${idx + 1}`}
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            ))
+          ))}
+      </div>
+
+      {/* Add/Edit Dialog */}
+      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+        <DialogContent className="max-w-sm" data-ocid="inventory.dialog">
+          <DialogHeader>
+            <DialogTitle>
+              {editingItem
+                ? isSalesForm
+                  ? tr("editSale")
+                  : tr("editPurchase")
+                : isSalesForm
+                  ? tr("addSale")
+                  : tr("addPurchase")}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 py-2">
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <Label className="text-xs">{tr("date")}</Label>
+                <Input
+                  type="date"
+                  value={form.date}
+                  onChange={(e) =>
+                    setForm((p) => ({ ...p, date: e.target.value }))
+                  }
+                  className="text-sm"
+                  data-ocid="inventory.date.input"
+                />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs">{tr("deviceType")}</Label>
+                <Select
+                  value={form.deviceType}
+                  onValueChange={(v) =>
+                    setForm((p) => ({ ...p, deviceType: v }))
+                  }
+                >
+                  <SelectTrigger
+                    className="text-sm"
+                    data-ocid="inventory.devicetype.select"
+                  >
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="AC">{tr("ac")}</SelectItem>
+                    <SelectItem value="Refrigerator">
+                      {tr("refrigerator")}
+                    </SelectItem>
+                    <SelectItem value="Washing Machine">
+                      {tr("washingMachine")}
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <Label className="text-xs">{tr("brand")}</Label>
+                <Input
+                  value={form.brand}
+                  onChange={(e) =>
+                    setForm((p) => ({ ...p, brand: e.target.value }))
+                  }
+                  className="text-sm"
+                  data-ocid="inventory.brand.input"
+                />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs">{tr("model")}</Label>
+                <Input
+                  value={form.model}
+                  onChange={(e) =>
+                    setForm((p) => ({ ...p, model: e.target.value }))
+                  }
+                  className="text-sm"
+                  data-ocid="inventory.model.input"
+                />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <Label className="text-xs">{tr("quantity")}</Label>
+                <Input
+                  type="number"
+                  min={1}
+                  value={form.quantity}
+                  onChange={(e) =>
+                    setForm((p) => ({
+                      ...p,
+                      quantity: Number.parseInt(e.target.value) || 1,
+                    }))
+                  }
+                  className="text-sm"
+                  data-ocid="inventory.quantity.input"
+                />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs">{tr("unitPrice")} (MMK)</Label>
+                <Input
+                  type="number"
+                  min={0}
+                  value={form.unitPrice}
+                  onChange={(e) =>
+                    setForm((p) => ({
+                      ...p,
+                      unitPrice: Number.parseInt(e.target.value) || 0,
+                    }))
+                  }
+                  className="text-sm"
+                  data-ocid="inventory.unitprice.input"
+                />
+              </div>
+            </div>
+            <div className="rounded-md bg-muted/50 px-3 py-2 text-sm">
+              <span className="text-muted-foreground text-xs">
+                {tr("totalPrice")}:{" "}
+              </span>
+              <span className="font-semibold text-primary">
+                {formatMMK((form.quantity ?? 0) * (form.unitPrice ?? 0))}
+              </span>
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs">
+                {isSalesForm ? tr("customerName") : tr("supplierName")}
+              </Label>
+              <Input
+                value={
+                  isSalesForm
+                    ? (form as typeof emptySaleForm).customerName
+                    : (form as typeof emptyPurchaseForm).supplierName
+                }
+                onChange={(e) =>
+                  setForm((p) =>
+                    isSalesForm
+                      ? { ...p, customerName: e.target.value }
+                      : { ...p, supplierName: e.target.value },
+                  )
+                }
+                className="text-sm"
+                data-ocid="inventory.party.input"
+              />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs">{tr("notes")}</Label>
+              <Textarea
+                value={form.notes}
+                onChange={(e) =>
+                  setForm((p) => ({ ...p, notes: e.target.value }))
+                }
+                className="text-sm resize-none"
+                rows={2}
+                data-ocid="inventory.notes.textarea"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setDialogOpen(false)}
+              data-ocid="inventory.cancel_button"
+            >
+              {tr("cancel")}
+            </Button>
+            <Button onClick={handleSave} data-ocid="inventory.save_button">
+              {tr("save")}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
+
 // ─── MAIN APP ─────────────────────────────────────────────────────────────────
-type Tab = "home" | "jobs" | "staff" | "reports" | "settings";
+type Tab = "home" | "jobs" | "staff" | "reports" | "settings" | "inventory";
 
 export default function App() {
+  const [loggedIn, setLoggedIn] = useState(() => isLoggedIn());
   const [lang, setLang] = useState<Language>(() => loadLanguage() as Language);
   const [theme, setTheme] = useState<"light" | "dark">(() => {
     return (localStorage.getItem("theme") as "light" | "dark") ?? "light";
@@ -2336,6 +3369,10 @@ export default function App() {
   const [tab, setTab] = useState<Tab>("home");
   const [jobs, setJobs] = useState<Job[]>(() => loadJobs());
   const [staffList, setStaffList] = useState<Staff[]>(() => loadStaff());
+  const [sales, setSales] = useState<SaleItem[]>(() => loadSales());
+  const [purchases, setPurchases] = useState<PurchaseItem[]>(() =>
+    loadPurchases(),
+  );
   const [callLogs, setCallLogs] = useState<CallLog[]>(() => loadCallLogs());
 
   const tr = (k: TKey) => t[lang][k] ?? t.en[k] ?? k;
@@ -2360,6 +3397,11 @@ export default function App() {
   function clearCallLogs() {
     setCallLogs([]);
     saveCallLogs([]);
+  }
+
+  function handleLogout() {
+    clearSession();
+    setLoggedIn(false);
   }
 
   function handleLangChange(l: Language) {
@@ -2391,7 +3433,12 @@ export default function App() {
     { id: "staff", icon: <Users size={20} />, label: "staff" },
     { id: "reports", icon: <BarChart2 size={20} />, label: "reports" },
     { id: "settings", icon: <Settings size={20} />, label: "settings" },
+    { id: "inventory", icon: <ShoppingBag size={20} />, label: "inventory" },
   ];
+
+  if (!loggedIn) {
+    return <LoginScreen onLogin={() => setLoggedIn(true)} />;
+  }
 
   return (
     <LangCtx.Provider value={{ lang, tr }}>
@@ -2420,6 +3467,23 @@ export default function App() {
               aria-label="Toggle theme"
             >
               {theme === "dark" ? <Sun size={18} /> : <Moon size={18} />}
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                if (
+                  window.confirm(
+                    lang === "my" ? "App မှ ထွက်မည်လား?" : "Logout from app?",
+                  )
+                ) {
+                  handleLogout();
+                }
+              }}
+              className="w-8 h-8 rounded-lg flex items-center justify-center text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
+              data-ocid="header.logout.button"
+              aria-label="Logout"
+            >
+              <LogOut size={18} />
             </button>
           </header>
 
@@ -2458,6 +3522,15 @@ export default function App() {
                   />
                 )}
                 {tab === "reports" && <ReportsTab jobs={jobs} />}
+                {tab === "inventory" && (
+                  <InventoryTab
+                    lang={lang}
+                    sales={sales}
+                    setSales={setSales}
+                    purchases={purchases}
+                    setPurchases={setPurchases}
+                  />
+                )}
                 {tab === "settings" && (
                   <SettingsTab
                     lang={lang}
@@ -2465,6 +3538,7 @@ export default function App() {
                     theme={theme}
                     onThemeChange={handleThemeChange}
                     onClearCallLogs={clearCallLogs}
+                    onLogout={handleLogout}
                   />
                 )}
               </motion.div>
