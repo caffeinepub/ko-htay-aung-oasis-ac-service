@@ -1,0 +1,111 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@font-face {
+  font-family: "Plus Jakarta Sans";
+  src: url("/assets/fonts/PlusJakartaSans.woff2") format("woff2");
+  font-weight: 300 700;
+  font-display: swap;
+}
+
+@layer base {
+  :root {
+    --radius: 0.75rem;
+    --background: 0.99 0 0;
+    --foreground: 0.2 0.015 160;
+    --card: 1 0 0;
+    --card-foreground: 0.2 0.015 160;
+    --popover: 1 0 0;
+    --popover-foreground: 0.2 0.015 160;
+    --primary: 0.52 0.18 145;
+    --primary-foreground: 1 0 0;
+    --secondary: 0.95 0.03 145;
+    --secondary-foreground: 0.3 0.1 145;
+    --muted: 0.96 0.01 145;
+    --muted-foreground: 0.55 0.04 145;
+    --accent: 0.93 0.06 145;
+    --accent-foreground: 0.3 0.12 145;
+    --destructive: 0.577 0.245 27.325;
+    --destructive-foreground: 0.985 0 0;
+    --border: 0.9 0.02 145;
+    --input: 0.9 0.02 145;
+    --ring: 0.52 0.18 145;
+    --success: 0.52 0.18 145;
+    --warning: 0.75 0.18 65;
+    --chart-1: 0.52 0.18 145;
+    --chart-2: 0.75 0.15 65;
+    --chart-3: 0.6 0.12 200;
+    --chart-4: 0.7 0.14 145;
+    --chart-5: 0.85 0.08 145;
+    --sidebar: 0.97 0.02 145;
+    --sidebar-foreground: 0.2 0.015 160;
+    --sidebar-primary: 0.52 0.18 145;
+    --sidebar-primary-foreground: 1 0 0;
+    --sidebar-accent: 0.93 0.06 145;
+    --sidebar-accent-foreground: 0.3 0.12 145;
+    --sidebar-border: 0.9 0.02 145;
+    --sidebar-ring: 0.52 0.18 145;
+  }
+
+  .dark {
+    --background: 0.12 0.01 145;
+    --foreground: 0.93 0.02 145;
+    --card: 0.17 0.02 145;
+    --card-foreground: 0.93 0.02 145;
+    --popover: 0.17 0.02 145;
+    --popover-foreground: 0.93 0.02 145;
+    --primary: 0.55 0.18 145;
+    --primary-foreground: 0.99 0 0;
+    --secondary: 0.22 0.04 145;
+    --secondary-foreground: 0.85 0.05 145;
+    --muted: 0.2 0.03 145;
+    --muted-foreground: 0.6 0.05 145;
+    --accent: 0.22 0.05 145;
+    --accent-foreground: 0.9 0.04 145;
+    --destructive: 0.55 0.22 27;
+    --destructive-foreground: 0.98 0 0;
+    --border: 0.28 0.04 145;
+    --input: 0.28 0.04 145;
+    --ring: 0.55 0.18 145;
+    --sidebar: 0.15 0.02 145;
+    --sidebar-foreground: 0.93 0.02 145;
+    --sidebar-primary: 0.55 0.18 145;
+    --sidebar-primary-foreground: 0.99 0 0;
+    --sidebar-accent: 0.22 0.05 145;
+    --sidebar-accent-foreground: 0.9 0.04 145;
+    --sidebar-border: 0.28 0.04 145;
+    --sidebar-ring: 0.55 0.18 145;
+  }
+
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-family: "Plus Jakarta Sans", "Figtree", system-ui, sans-serif;
+  }
+}
+
+/* Date input styling */
+input[type="date"]::-webkit-calendar-picker-indicator {
+  opacity: 0.6;
+  cursor: pointer;
+}
+
+/* Bottom nav safe area */
+.bottom-nav {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 4px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: oklch(var(--border));
+  border-radius: 2px;
+}
