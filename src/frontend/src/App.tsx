@@ -131,11 +131,11 @@ function compressImage(
 }
 
 // ─── Backend Converters ────────────────────────────────────────────────────
-function jobToBackend(j: Job) {
+function jobToBackend(j: Job): any {
   return {
     ...j,
     assignedStaffIds: j.assignedStaffIds,
-    photoUrl: j.photoUrl ?? undefined,
+    photoUrl: j.photoUrl ? [j.photoUrl] : [],
     photoUrls: j.photoUrls ?? [],
     serviceFee: j.serviceFee,
     createdAt: BigInt(j.createdAt),
@@ -145,24 +145,30 @@ function jobToBackend(j: Job) {
 function jobFromBackend(j: any): Job {
   return {
     ...j,
-    photoUrl: j.photoUrl ?? undefined,
+    photoUrl:
+      Array.isArray(j.photoUrl) && j.photoUrl.length > 0
+        ? j.photoUrl[0]
+        : undefined,
     photoUrls: j.photoUrls ?? [],
     serviceFee: Number(j.serviceFee),
     createdAt: Number(j.createdAt),
     updatedAt: Number(j.updatedAt),
   };
 }
-function staffToBackend(s: Staff) {
+function staffToBackend(s: Staff): any {
   return {
     ...s,
-    photoUrl: s.photoUrl ?? undefined,
+    photoUrl: s.photoUrl ? [s.photoUrl] : [],
     createdAt: BigInt(s.createdAt),
   };
 }
 function staffFromBackend(s: any): Staff {
   return {
     ...s,
-    photoUrl: s.photoUrl ?? undefined,
+    photoUrl:
+      Array.isArray(s.photoUrl) && s.photoUrl.length > 0
+        ? s.photoUrl[0]
+        : undefined,
     createdAt: Number(s.createdAt),
   };
 }
