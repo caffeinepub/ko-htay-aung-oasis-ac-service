@@ -116,15 +116,15 @@ function saveCredentials(creds: { username: string; password: string }) {
 }
 
 function isLoggedIn(): boolean {
-  return sessionStorage.getItem("oasis_session") === "true";
+  return localStorage.getItem("oasis_session") === "true";
 }
 
 function setSession() {
-  sessionStorage.setItem("oasis_session", "true");
+  localStorage.setItem("oasis_session", "true");
 }
 
 function clearSession() {
-  sessionStorage.removeItem("oasis_session");
+  localStorage.removeItem("oasis_session");
 }
 
 // ─── Login Screen ─────────────────────────────────────────────────────────────
@@ -359,6 +359,7 @@ const ROLES = [
   "Helper",
   "Secretary",
   "Manager",
+  "MD",
 ] as const;
 const STATUS_OPTIONS = ["Pending", "Done"] as const;
 
@@ -408,6 +409,7 @@ function RoleBadge({ role }: { role: string }) {
     Helper: "bg-orange-100 text-orange-700",
     Secretary: "bg-pink-100 text-pink-700",
     Manager: "bg-teal-100 text-teal-700",
+    MD: "bg-red-100 text-red-700",
   };
   return (
     <span
