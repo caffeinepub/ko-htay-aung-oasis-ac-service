@@ -102,12 +102,40 @@ function loadJsPDF(): Promise<any> {
 // ─── Auth Helpers ────────────────────────────────────────────────────────────
 const DEFAULT_CREDENTIALS = { username: "Oasis", password: "oasis2000" };
 
+// ─── Image Compression ────────────────────────────────────────────────────────
+function compressImage(
+  dataUrl: string,
+  maxWidth = 400,
+  maxHeight = 400,
+  quality = 0.7,
+): Promise<string> {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => {
+      let { width, height } = img;
+      if (width > maxWidth || height > maxHeight) {
+        const ratio = Math.min(maxWidth / width, maxHeight / height);
+        width = Math.round(width * ratio);
+        height = Math.round(height * ratio);
+      }
+      const canvas = document.createElement("canvas");
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext("2d")!;
+      ctx.drawImage(img, 0, 0, width, height);
+      resolve(canvas.toDataURL("image/jpeg", quality));
+    };
+    img.onerror = () => resolve(dataUrl); // fallback to original
+    img.src = dataUrl;
+  });
+}
+
 // ─── Backend Converters ────────────────────────────────────────────────────
 function jobToBackend(j: Job) {
   return {
     ...j,
     assignedStaffIds: j.assignedStaffIds,
-    photoUrl: j.photoUrl ? ([j.photoUrl] as [string]) : ([] as []),
+    photoUrl: j.photoUrl ?? undefined,
     photoUrls: j.photoUrls ?? [],
     serviceFee: j.serviceFee,
     createdAt: BigInt(j.createdAt),
@@ -117,7 +145,7 @@ function jobToBackend(j: Job) {
 function jobFromBackend(j: any): Job {
   return {
     ...j,
-    photoUrl: j.photoUrl?.[0] ?? undefined,
+    photoUrl: j.photoUrl ?? undefined,
     photoUrls: j.photoUrls ?? [],
     serviceFee: Number(j.serviceFee),
     createdAt: Number(j.createdAt),
@@ -127,23 +155,23 @@ function jobFromBackend(j: any): Job {
 function staffToBackend(s: Staff) {
   return {
     ...s,
-    photoUrl: s.photoUrl ? ([s.photoUrl] as [string]) : ([] as []),
+    photoUrl: s.photoUrl ?? undefined,
     createdAt: BigInt(s.createdAt),
   };
 }
 function staffFromBackend(s: any): Staff {
   return {
     ...s,
-    photoUrl: s.photoUrl?.[0] ?? undefined,
+    photoUrl: s.photoUrl ?? undefined,
     createdAt: Number(s.createdAt),
   };
 }
 function saleToBackend(s: SaleItem) {
   return {
     ...s,
-    quantity: BigInt(s.quantity),
-    unitPrice: Number(s.unitPrice),
-    totalPrice: Number(s.totalPrice),
+    quantity: BigInt(Math.round(Number(s.quantity) || 0)),
+    unitPrice: Number(s.unitPrice) || 0,
+    totalPrice: Number(s.totalPrice) || 0,
     createdAt: BigInt(s.createdAt),
   };
 }
@@ -151,17 +179,17 @@ function saleFromBackend(s: any): SaleItem {
   return {
     ...s,
     quantity: Number(s.quantity),
-    unitPrice: Number(s.unitPrice),
-    totalPrice: Number(s.totalPrice),
+    unitPrice: Number(s.unitPrice) || 0,
+    totalPrice: Number(s.totalPrice) || 0,
     createdAt: Number(s.createdAt),
   };
 }
 function purchaseToBackend(p: PurchaseItem) {
   return {
     ...p,
-    quantity: BigInt(p.quantity),
-    unitPrice: Number(p.unitPrice),
-    totalPrice: Number(p.totalPrice),
+    quantity: BigInt(Math.round(Number(p.quantity) || 0)),
+    unitPrice: Number(p.unitPrice) || 0,
+    totalPrice: Number(p.totalPrice) || 0,
     createdAt: BigInt(p.createdAt),
   };
 }
@@ -169,8 +197,8 @@ function purchaseFromBackend(p: any): PurchaseItem {
   return {
     ...p,
     quantity: Number(p.quantity),
-    unitPrice: Number(p.unitPrice),
-    totalPrice: Number(p.totalPrice),
+    unitPrice: Number(p.unitPrice) || 0,
+    totalPrice: Number(p.totalPrice) || 0,
     createdAt: Number(p.createdAt),
   };
 }
@@ -199,7 +227,10 @@ function saveCredentials(creds: { username: string; password: string }) {
   );
   getBackend()
     .then((b) => b.setCredentials(creds.username.trim(), creds.password.trim()))
-    .catch(() => {});
+    .catch((err) => {
+      console.error("Backend write failed:", err);
+      toast.error("Data save failed. Please try again.");
+    });
 }
 
 function isLoggedIn(): boolean {
@@ -241,9 +272,11 @@ function LoginScreen({ onLogin }: { onLogin: () => void }) {
     <div className="min-h-screen bg-background flex items-center justify-center p-4">
       <div className="w-full max-w-[360px]">
         <div className="flex flex-col items-center mb-8">
-          <div className="w-16 h-16 rounded-2xl bg-primary flex items-center justify-center mb-4 shadow-lg">
-            <Wrench size={30} className="text-primary-foreground" />
-          </div>
+          <img
+            src="/assets/uploads/1000064267-019d1fb8-66d3-7279-afba-bf289c372480-1.png"
+            alt="Logo"
+            className="w-20 h-20 object-contain mb-4 rounded-2xl shadow-lg"
+          />
           <p className="text-xs text-muted-foreground">Ko Htay Aung</p>
           <h1 className="text-xl font-bold text-foreground">
             Oasis AC Service
@@ -560,11 +593,13 @@ function JobForm({ initial, staffList, onSave, onCancel }: JobFormProps) {
     const files = Array.from(e.target.files ?? []);
     for (const file of files) {
       const reader = new FileReader();
-      reader.onload = (ev) => {
+      reader.onload = async (ev) => {
         if (ev.target?.result) {
+          const raw = ev.target!.result as string;
+          const compressed = await compressImage(raw, 600, 600, 0.75);
           setForm((p) => ({
             ...p,
-            photoUrls: [...p.photoUrls, ev.target!.result as string],
+            photoUrls: [...p.photoUrls, compressed],
           }));
         }
       };
@@ -923,8 +958,10 @@ function StaffForm({ initial, onSave, onCancel }: StaffFormProps) {
     const file = e.target.files?.[0];
     if (!file) return;
     const reader = new FileReader();
-    reader.onload = (ev) => {
-      setForm((p) => ({ ...p, photoUrl: ev.target!.result as string }));
+    reader.onload = async (ev) => {
+      const raw = ev.target!.result as string;
+      const compressed = await compressImage(raw, 300, 300, 0.7);
+      setForm((p) => ({ ...p, photoUrl: compressed }));
     };
     reader.readAsDataURL(file);
   }
@@ -1170,7 +1207,9 @@ function JobDetail({
       .join("\n");
 
     if (navigator.share) {
-      navigator.share({ title: "Job Detail", text }).catch(() => {});
+      navigator.share({ title: "Job Detail", text }).catch((err) => {
+        console.error("Share failed:", err);
+      });
     } else {
       navigator.clipboard
         .writeText(text)
@@ -1658,7 +1697,10 @@ function JobsTab({
     onJobsChange(updated);
     getBackend()
       .then((b) => b.addJob(jobToBackend(newJob)))
-      .catch(() => {});
+      .catch((err) => {
+        console.error("Backend write failed:", err);
+        toast.error("Data save failed. Please try again.");
+      });
     setShowAdd(false);
     toast.success("Job added!");
   }
@@ -1677,7 +1719,10 @@ function JobsTab({
             jobToBackend({ ...editJob, ...data, updatedAt: Date.now() }),
           ),
         )
-        .catch(() => {});
+        .catch((err) => {
+          console.error("Backend write failed:", err);
+          toast.error("Data save failed. Please try again.");
+        });
     setEditJob(null);
     setViewJob(null);
     toast.success("Job updated!");
@@ -1688,7 +1733,10 @@ function JobsTab({
     onJobsChange(updated);
     getBackend()
       .then((b) => b.deleteJob(id))
-      .catch(() => {});
+      .catch((err) => {
+        console.error("Backend write failed:", err);
+        toast.error("Data save failed. Please try again.");
+      });
     setViewJob(null);
     setDeleteId(null);
     toast.success("Job deleted!");
@@ -1985,7 +2033,10 @@ function StaffTab({
     onStaffChange(updated);
     getBackend()
       .then((b) => b.addStaff(staffToBackend(newStaff)))
-      .catch(() => {});
+      .catch((err) => {
+        console.error("Backend write failed:", err);
+        toast.error("Data save failed. Please try again.");
+      });
     setShowAdd(false);
     toast.success("Staff added!");
   }
@@ -1998,7 +2049,10 @@ function StaffTab({
     onStaffChange(updated);
     getBackend()
       .then((b) => b.updateStaff(staffToBackend({ ...editStaff, ...data })))
-      .catch(() => {});
+      .catch((err) => {
+        console.error("Backend write failed:", err);
+        toast.error("Data save failed. Please try again.");
+      });
     setEditStaff(null);
     setViewStaff(null);
     toast.success("Staff updated!");
@@ -2009,7 +2063,10 @@ function StaffTab({
     onStaffChange(updated);
     getBackend()
       .then((b) => b.deleteStaff(id))
-      .catch(() => {});
+      .catch((err) => {
+        console.error("Backend write failed:", err);
+        toast.error("Data save failed. Please try again.");
+      });
     setViewStaff(null);
     setDeleteId(null);
     toast.success("Staff deleted!");
@@ -2985,9 +3042,11 @@ function SettingsTab({
       {/* About */}
       <Card className="border-border shadow-xs">
         <CardContent className="p-4 text-center">
-          <div className="w-16 h-16 rounded-2xl bg-primary mx-auto flex items-center justify-center mb-3">
-            <Wrench size={28} className="text-primary-foreground" />
-          </div>
+          <img
+            src="/assets/uploads/1000064267-019d1fb8-66d3-7279-afba-bf289c372480-1.png"
+            alt="Logo"
+            className="w-20 h-20 object-contain rounded-2xl mx-auto mb-3"
+          />
           <p className="text-sm font-bold text-foreground">
             Ko Htay Aung (Oasis)
           </p>
@@ -3118,8 +3177,8 @@ function InventoryTab({
     deviceType: "AC",
     brand: "",
     model: "",
-    quantity: 1,
-    unitPrice: 0,
+    quantity: "" as unknown as number,
+    unitPrice: "" as unknown as number,
     customerName: "",
     notes: "",
   };
@@ -3128,8 +3187,8 @@ function InventoryTab({
     deviceType: "AC",
     brand: "",
     model: "",
-    quantity: 1,
-    unitPrice: 0,
+    quantity: "" as unknown as number,
+    unitPrice: "" as unknown as number,
     supplierName: "",
     notes: "",
   };
@@ -3177,7 +3236,17 @@ function InventoryTab({
   }
 
   function handleSave() {
-    const totalPrice = (form.quantity ?? 0) * (form.unitPrice ?? 0);
+    const qty = Number(form.quantity);
+    const price = Number(form.unitPrice);
+    if (!qty || qty <= 0) {
+      toast.error("Quantity လိုအပ်ပါသည်");
+      return;
+    }
+    if (!price || price <= 0) {
+      toast.error("Unit Price (MMK) လိုအပ်ပါသည်");
+      return;
+    }
+    const totalPrice = qty * price;
     if (subTab === "sales") {
       const f = form as typeof emptySaleForm;
       if (editingItem) {
@@ -3189,7 +3258,10 @@ function InventoryTab({
         if (item)
           getBackend()
             .then((b) => b.updateSale(saleToBackend(item)))
-            .catch(() => {});
+            .catch((err) => {
+              console.error("Backend write failed:", err);
+              toast.error("Data save failed. Please try again.");
+            });
       } else {
         const newItem: SaleItem = {
           id: generateId(),
@@ -3201,7 +3273,10 @@ function InventoryTab({
         setSales(updated);
         getBackend()
           .then((b) => b.addSale(saleToBackend(newItem)))
-          .catch(() => {});
+          .catch((err) => {
+            console.error("Backend write failed:", err);
+            toast.error("Data save failed. Please try again.");
+          });
       }
     } else {
       const f = form as typeof emptyPurchaseForm;
@@ -3214,7 +3289,10 @@ function InventoryTab({
         if (item)
           getBackend()
             .then((b) => b.updatePurchase(purchaseToBackend(item)))
-            .catch(() => {});
+            .catch((err) => {
+              console.error("Backend write failed:", err);
+              toast.error("Data save failed. Please try again.");
+            });
       } else {
         const newItem: PurchaseItem = {
           id: generateId(),
@@ -3226,7 +3304,10 @@ function InventoryTab({
         setPurchases(updated);
         getBackend()
           .then((b) => b.addPurchase(purchaseToBackend(newItem)))
-          .catch(() => {});
+          .catch((err) => {
+            console.error("Backend write failed:", err);
+            toast.error("Data save failed. Please try again.");
+          });
       }
     }
     setDialogOpen(false);
@@ -3239,13 +3320,19 @@ function InventoryTab({
       setSales(updated);
       getBackend()
         .then((b) => b.deleteSale(id))
-        .catch(() => {});
+        .catch((err) => {
+          console.error("Backend write failed:", err);
+          toast.error("Data save failed. Please try again.");
+        });
     } else {
       const updated = purchases.filter((p) => p.id !== id);
       setPurchases(updated);
       getBackend()
         .then((b) => b.deletePurchase(id))
-        .catch(() => {});
+        .catch((err) => {
+          console.error("Backend write failed:", err);
+          toast.error("Data save failed. Please try again.");
+        });
     }
   }
 
@@ -3636,7 +3723,10 @@ function InventoryTab({
                   onChange={(e) =>
                     setForm((p) => ({
                       ...p,
-                      quantity: Number.parseInt(e.target.value) || 1,
+                      quantity:
+                        e.target.value === ""
+                          ? ("" as unknown as number)
+                          : Number.parseInt(e.target.value),
                     }))
                   }
                   className="text-sm"
@@ -3652,7 +3742,10 @@ function InventoryTab({
                   onChange={(e) =>
                     setForm((p) => ({
                       ...p,
-                      unitPrice: Number.parseInt(e.target.value) || 0,
+                      unitPrice:
+                        e.target.value === ""
+                          ? ("" as unknown as number)
+                          : Number.parseInt(e.target.value),
                     }))
                   }
                   className="text-sm"
@@ -3755,14 +3848,20 @@ export default function App() {
     setCallLogs(updated);
     getBackend()
       .then((b) => b.addCallLog(callLogToBackend(log)))
-      .catch(() => {});
+      .catch((err) => {
+        console.error("Backend write failed:", err);
+        toast.error("Data save failed. Please try again.");
+      });
   }
 
   function clearCallLogs() {
     setCallLogs([]);
     getBackend()
       .then((b) => b.clearCallLogs())
-      .catch(() => {});
+      .catch((err) => {
+        console.error("Backend write failed:", err);
+        toast.error("Data save failed. Please try again.");
+      });
   }
 
   function handleLogout() {
@@ -3827,6 +3926,7 @@ export default function App() {
         }
       } catch (err) {
         console.error("Failed to load data from backend", err);
+        toast.error("Failed to load data. Please refresh the page.");
       } finally {
         if (!cancelled) setDataLoading(false);
       }
@@ -3853,10 +3953,12 @@ export default function App() {
   if (dataLoading) {
     return (
       <div className="min-h-screen bg-background flex flex-col items-center justify-center gap-3">
-        <div className="w-12 h-12 rounded-2xl bg-primary flex items-center justify-center shadow-lg animate-pulse">
-          <Wrench size={22} className="text-primary-foreground" />
-        </div>
-        <p className="text-sm text-muted-foreground">ဒေတာ လဝင်နေသည်...</p>
+        <img
+          src="/assets/uploads/1000064267-019d1fb8-66d3-7279-afba-bf289c372480-1.png"
+          alt="Logo"
+          className="w-20 h-20 object-contain rounded-2xl animate-pulse"
+        />
+        <p className="text-sm text-muted-foreground">Loading...</p>
         <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
       </div>
     );
@@ -3868,9 +3970,11 @@ export default function App() {
         <div className="w-full max-w-[430px] relative flex flex-col min-h-screen">
           {/* Page header */}
           <header className="sticky top-0 z-20 bg-background border-b border-border px-4 py-3 flex items-center gap-3">
-            <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center shrink-0">
-              <Wrench size={16} className="text-primary-foreground" />
-            </div>
+            <img
+              src="/assets/uploads/1000064267-019d1fb8-66d3-7279-afba-bf289c372480-1.png"
+              alt="Logo"
+              className="w-9 h-9 object-contain rounded-lg shrink-0"
+            />
             <div className="flex-1">
               <p className="text-xs leading-none text-muted-foreground">
                 Ko Htay Aung

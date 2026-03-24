@@ -10,6 +10,70 @@ import type { ActorMethod } from '@icp-sdk/core/agent';
 import type { IDL } from '@icp-sdk/core/candid';
 import type { Principal } from '@icp-sdk/core/principal';
 
+export interface CallLog {
+  'id' : string,
+  'customerName' : string,
+  'context' : string,
+  'customerPhone' : string,
+  'calledAt' : bigint,
+}
+export interface Job {
+  'hp' : string,
+  'id' : string,
+  'acType' : string,
+  'customerName' : string,
+  'status' : string,
+  'photoUrls' : Array<string>,
+  'customerPhone' : string,
+  'date' : string,
+  'createdAt' : bigint,
+  'photoUrl' : [] | [string],
+  'serviceFee' : number,
+  'updatedAt' : bigint,
+  'customerAddress' : string,
+  'notes' : string,
+  'deviceType' : string,
+  'assignedStaffIds' : Array<string>,
+  'brand' : string,
+  'problem' : string,
+  'gasType' : string,
+}
+export interface PurchaseItem {
+  'id' : string,
+  'model' : string,
+  'supplierName' : string,
+  'date' : string,
+  'createdAt' : bigint,
+  'notes' : string,
+  'quantity' : bigint,
+  'deviceType' : string,
+  'brand' : string,
+  'unitPrice' : number,
+  'totalPrice' : number,
+}
+export interface SaleItem {
+  'id' : string,
+  'customerName' : string,
+  'model' : string,
+  'date' : string,
+  'createdAt' : bigint,
+  'notes' : string,
+  'quantity' : bigint,
+  'deviceType' : string,
+  'brand' : string,
+  'unitPrice' : number,
+  'totalPrice' : number,
+}
+export interface Staff {
+  'id' : string,
+  'name' : string,
+  'createdAt' : bigint,
+  'role' : string,
+  'photoUrl' : [] | [string],
+  'address' : string,
+  'notes' : string,
+  'phone' : string,
+}
 export interface _CaffeineStorageCreateCertificateResult {
   'method' : string,
   'blob_hash' : string,
@@ -37,6 +101,30 @@ export interface _SERVICE {
     _CaffeineStorageRefillResult
   >,
   '_caffeineStorageUpdateGatewayPrincipals' : ActorMethod<[], undefined>,
+  'addCallLog' : ActorMethod<[CallLog], undefined>,
+  'addJob' : ActorMethod<[Job], undefined>,
+  'addPurchase' : ActorMethod<[PurchaseItem], undefined>,
+  'addSale' : ActorMethod<[SaleItem], undefined>,
+  'addStaff' : ActorMethod<[Staff], undefined>,
+  'clearCallLogs' : ActorMethod<[], undefined>,
+  'deleteJob' : ActorMethod<[string], undefined>,
+  'deletePurchase' : ActorMethod<[string], undefined>,
+  'deleteSale' : ActorMethod<[string], undefined>,
+  'deleteStaff' : ActorMethod<[string], undefined>,
+  'getCallLogs' : ActorMethod<[], Array<CallLog>>,
+  'getCredentials' : ActorMethod<
+    [],
+    { 'username' : string, 'password' : string }
+  >,
+  'getJobs' : ActorMethod<[], Array<Job>>,
+  'getPurchases' : ActorMethod<[], Array<PurchaseItem>>,
+  'getSales' : ActorMethod<[], Array<SaleItem>>,
+  'getStaff' : ActorMethod<[], Array<Staff>>,
+  'setCredentials' : ActorMethod<[string, string], undefined>,
+  'updateJob' : ActorMethod<[Job], undefined>,
+  'updatePurchase' : ActorMethod<[PurchaseItem], undefined>,
+  'updateSale' : ActorMethod<[SaleItem], undefined>,
+  'updateStaff' : ActorMethod<[Staff], undefined>,
 }
 export declare const idlService: IDL.ServiceClass;
 export declare const idlInitArgs: IDL.Type[];

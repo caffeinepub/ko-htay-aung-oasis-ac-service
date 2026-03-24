@@ -88,7 +88,7 @@ actor {
   };
   public func updateStaff(item : Staff) : async () {
     staffData := Array.map<Staff, Staff>(staffData, func(s) {
-      if (s.id == item.id) item else s;
+      if (s.id == item.id) { item } else { s };
     });
   };
   public func deleteStaff(id : Text) : async () {
@@ -102,7 +102,7 @@ actor {
   };
   public func updateJob(item : Job) : async () {
     jobsData := Array.map<Job, Job>(jobsData, func(j) {
-      if (j.id == item.id) item else j;
+      if (j.id == item.id) { item } else { j };
     });
   };
   public func deleteJob(id : Text) : async () {
@@ -125,7 +125,7 @@ actor {
   };
   public func updateSale(item : SaleItem) : async () {
     salesData := Array.map<SaleItem, SaleItem>(salesData, func(s) {
-      if (s.id == item.id) item else s;
+      if (s.id == item.id) { item } else { s };
     });
   };
   public func deleteSale(id : Text) : async () {
@@ -139,7 +139,7 @@ actor {
   };
   public func updatePurchase(item : PurchaseItem) : async () {
     purchasesData := Array.map<PurchaseItem, PurchaseItem>(purchasesData, func(p) {
-      if (p.id == item.id) item else p;
+      if (p.id == item.id) { item } else { p };
     });
   };
   public func deletePurchase(id : Text) : async () {

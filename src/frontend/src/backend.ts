@@ -89,16 +89,80 @@ export class ExternalBlob {
         return this;
     }
 }
+export interface PurchaseItem {
+    id: string;
+    model: string;
+    supplierName: string;
+    date: string;
+    createdAt: bigint;
+    notes: string;
+    quantity: bigint;
+    deviceType: string;
+    brand: string;
+    unitPrice: number;
+    totalPrice: number;
+}
+export interface Job {
+    hp: string;
+    id: string;
+    acType: string;
+    customerName: string;
+    status: string;
+    photoUrls: Array<string>;
+    customerPhone: string;
+    date: string;
+    createdAt: bigint;
+    photoUrl?: string;
+    serviceFee: number;
+    updatedAt: bigint;
+    customerAddress: string;
+    notes: string;
+    deviceType: string;
+    assignedStaffIds: Array<string>;
+    brand: string;
+    problem: string;
+    gasType: string;
+}
+export interface Staff {
+    id: string;
+    name: string;
+    createdAt: bigint;
+    role: string;
+    photoUrl?: string;
+    address: string;
+    notes: string;
+    phone: string;
+}
+export interface _CaffeineStorageRefillInformation {
+    proposed_top_up_amount?: bigint;
+}
+export interface CallLog {
+    id: string;
+    customerName: string;
+    context: string;
+    customerPhone: string;
+    calledAt: bigint;
+}
 export interface _CaffeineStorageCreateCertificateResult {
     method: string;
     blob_hash: string;
 }
+export interface SaleItem {
+    id: string;
+    customerName: string;
+    model: string;
+    date: string;
+    createdAt: bigint;
+    notes: string;
+    quantity: bigint;
+    deviceType: string;
+    brand: string;
+    unitPrice: number;
+    totalPrice: number;
+}
 export interface _CaffeineStorageRefillResult {
     success?: boolean;
     topped_up_amount?: bigint;
-}
-export interface _CaffeineStorageRefillInformation {
-    proposed_top_up_amount?: bigint;
 }
 export interface backendInterface {
     _caffeineStorageBlobIsLive(hash: Uint8Array): Promise<boolean>;
@@ -107,8 +171,32 @@ export interface backendInterface {
     _caffeineStorageCreateCertificate(blobHash: string): Promise<_CaffeineStorageCreateCertificateResult>;
     _caffeineStorageRefillCashier(refillInformation: _CaffeineStorageRefillInformation | null): Promise<_CaffeineStorageRefillResult>;
     _caffeineStorageUpdateGatewayPrincipals(): Promise<void>;
+    addCallLog(item: CallLog): Promise<void>;
+    addJob(item: Job): Promise<void>;
+    addPurchase(item: PurchaseItem): Promise<void>;
+    addSale(item: SaleItem): Promise<void>;
+    addStaff(item: Staff): Promise<void>;
+    clearCallLogs(): Promise<void>;
+    deleteJob(id: string): Promise<void>;
+    deletePurchase(id: string): Promise<void>;
+    deleteSale(id: string): Promise<void>;
+    deleteStaff(id: string): Promise<void>;
+    getCallLogs(): Promise<Array<CallLog>>;
+    getCredentials(): Promise<{
+        username: string;
+        password: string;
+    }>;
+    getJobs(): Promise<Array<Job>>;
+    getPurchases(): Promise<Array<PurchaseItem>>;
+    getSales(): Promise<Array<SaleItem>>;
+    getStaff(): Promise<Array<Staff>>;
+    setCredentials(username: string, password: string): Promise<void>;
+    updateJob(item: Job): Promise<void>;
+    updatePurchase(item: PurchaseItem): Promise<void>;
+    updateSale(item: SaleItem): Promise<void>;
+    updateStaff(item: Staff): Promise<void>;
 }
-import type { _CaffeineStorageRefillInformation as __CaffeineStorageRefillInformation, _CaffeineStorageRefillResult as __CaffeineStorageRefillResult } from "./declarations/backend.did.d.ts";
+import type { Job as _Job, Staff as _Staff, _CaffeineStorageRefillInformation as __CaffeineStorageRefillInformation, _CaffeineStorageRefillResult as __CaffeineStorageRefillResult } from "./declarations/backend.did.d.ts";
 export class Backend implements backendInterface {
     constructor(private actor: ActorSubclass<_SERVICE>, private _uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, private _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, private processError?: (error: unknown) => never){}
     async _caffeineStorageBlobIsLive(arg0: Uint8Array): Promise<boolean> {
@@ -195,15 +283,414 @@ export class Backend implements backendInterface {
             return result;
         }
     }
+    async addCallLog(arg0: CallLog): Promise<void> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.addCallLog(arg0);
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.addCallLog(arg0);
+            return result;
+        }
+    }
+    async addJob(arg0: Job): Promise<void> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.addJob(to_candid_Job_n8(this._uploadFile, this._downloadFile, arg0));
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.addJob(to_candid_Job_n8(this._uploadFile, this._downloadFile, arg0));
+            return result;
+        }
+    }
+    async addPurchase(arg0: PurchaseItem): Promise<void> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.addPurchase(arg0);
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.addPurchase(arg0);
+            return result;
+        }
+    }
+    async addSale(arg0: SaleItem): Promise<void> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.addSale(arg0);
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.addSale(arg0);
+            return result;
+        }
+    }
+    async addStaff(arg0: Staff): Promise<void> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.addStaff(to_candid_Staff_n10(this._uploadFile, this._downloadFile, arg0));
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.addStaff(to_candid_Staff_n10(this._uploadFile, this._downloadFile, arg0));
+            return result;
+        }
+    }
+    async clearCallLogs(): Promise<void> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.clearCallLogs();
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.clearCallLogs();
+            return result;
+        }
+    }
+    async deleteJob(arg0: string): Promise<void> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.deleteJob(arg0);
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.deleteJob(arg0);
+            return result;
+        }
+    }
+    async deletePurchase(arg0: string): Promise<void> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.deletePurchase(arg0);
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.deletePurchase(arg0);
+            return result;
+        }
+    }
+    async deleteSale(arg0: string): Promise<void> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.deleteSale(arg0);
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.deleteSale(arg0);
+            return result;
+        }
+    }
+    async deleteStaff(arg0: string): Promise<void> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.deleteStaff(arg0);
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.deleteStaff(arg0);
+            return result;
+        }
+    }
+    async getCallLogs(): Promise<Array<CallLog>> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.getCallLogs();
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.getCallLogs();
+            return result;
+        }
+    }
+    async getCredentials(): Promise<{
+        username: string;
+        password: string;
+    }> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.getCredentials();
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.getCredentials();
+            return result;
+        }
+    }
+    async getJobs(): Promise<Array<Job>> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.getJobs();
+                return from_candid_vec_n12(this._uploadFile, this._downloadFile, result);
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.getJobs();
+            return from_candid_vec_n12(this._uploadFile, this._downloadFile, result);
+        }
+    }
+    async getPurchases(): Promise<Array<PurchaseItem>> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.getPurchases();
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.getPurchases();
+            return result;
+        }
+    }
+    async getSales(): Promise<Array<SaleItem>> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.getSales();
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.getSales();
+            return result;
+        }
+    }
+    async getStaff(): Promise<Array<Staff>> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.getStaff();
+                return from_candid_vec_n16(this._uploadFile, this._downloadFile, result);
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.getStaff();
+            return from_candid_vec_n16(this._uploadFile, this._downloadFile, result);
+        }
+    }
+    async setCredentials(arg0: string, arg1: string): Promise<void> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.setCredentials(arg0, arg1);
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.setCredentials(arg0, arg1);
+            return result;
+        }
+    }
+    async updateJob(arg0: Job): Promise<void> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.updateJob(to_candid_Job_n8(this._uploadFile, this._downloadFile, arg0));
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.updateJob(to_candid_Job_n8(this._uploadFile, this._downloadFile, arg0));
+            return result;
+        }
+    }
+    async updatePurchase(arg0: PurchaseItem): Promise<void> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.updatePurchase(arg0);
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.updatePurchase(arg0);
+            return result;
+        }
+    }
+    async updateSale(arg0: SaleItem): Promise<void> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.updateSale(arg0);
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.updateSale(arg0);
+            return result;
+        }
+    }
+    async updateStaff(arg0: Staff): Promise<void> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.updateStaff(to_candid_Staff_n10(this._uploadFile, this._downloadFile, arg0));
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.updateStaff(to_candid_Staff_n10(this._uploadFile, this._downloadFile, arg0));
+            return result;
+        }
+    }
+}
+function from_candid_Job_n13(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _Job): Job {
+    return from_candid_record_n14(_uploadFile, _downloadFile, value);
+}
+function from_candid_Staff_n17(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _Staff): Staff {
+    return from_candid_record_n18(_uploadFile, _downloadFile, value);
 }
 function from_candid__CaffeineStorageRefillResult_n4(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: __CaffeineStorageRefillResult): _CaffeineStorageRefillResult {
     return from_candid_record_n5(_uploadFile, _downloadFile, value);
+}
+function from_candid_opt_n15(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: [] | [string]): string | null {
+    return value.length === 0 ? null : value[0];
 }
 function from_candid_opt_n6(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: [] | [boolean]): boolean | null {
     return value.length === 0 ? null : value[0];
 }
 function from_candid_opt_n7(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: [] | [bigint]): bigint | null {
     return value.length === 0 ? null : value[0];
+}
+function from_candid_record_n14(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
+    hp: string;
+    id: string;
+    acType: string;
+    customerName: string;
+    status: string;
+    photoUrls: Array<string>;
+    customerPhone: string;
+    date: string;
+    createdAt: bigint;
+    photoUrl: [] | [string];
+    serviceFee: number;
+    updatedAt: bigint;
+    customerAddress: string;
+    notes: string;
+    deviceType: string;
+    assignedStaffIds: Array<string>;
+    brand: string;
+    problem: string;
+    gasType: string;
+}): {
+    hp: string;
+    id: string;
+    acType: string;
+    customerName: string;
+    status: string;
+    photoUrls: Array<string>;
+    customerPhone: string;
+    date: string;
+    createdAt: bigint;
+    photoUrl?: string;
+    serviceFee: number;
+    updatedAt: bigint;
+    customerAddress: string;
+    notes: string;
+    deviceType: string;
+    assignedStaffIds: Array<string>;
+    brand: string;
+    problem: string;
+    gasType: string;
+} {
+    return {
+        hp: value.hp,
+        id: value.id,
+        acType: value.acType,
+        customerName: value.customerName,
+        status: value.status,
+        photoUrls: value.photoUrls,
+        customerPhone: value.customerPhone,
+        date: value.date,
+        createdAt: value.createdAt,
+        photoUrl: record_opt_to_undefined(from_candid_opt_n15(_uploadFile, _downloadFile, value.photoUrl)),
+        serviceFee: value.serviceFee,
+        updatedAt: value.updatedAt,
+        customerAddress: value.customerAddress,
+        notes: value.notes,
+        deviceType: value.deviceType,
+        assignedStaffIds: value.assignedStaffIds,
+        brand: value.brand,
+        problem: value.problem,
+        gasType: value.gasType
+    };
+}
+function from_candid_record_n18(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
+    id: string;
+    name: string;
+    createdAt: bigint;
+    role: string;
+    photoUrl: [] | [string];
+    address: string;
+    notes: string;
+    phone: string;
+}): {
+    id: string;
+    name: string;
+    createdAt: bigint;
+    role: string;
+    photoUrl?: string;
+    address: string;
+    notes: string;
+    phone: string;
+} {
+    return {
+        id: value.id,
+        name: value.name,
+        createdAt: value.createdAt,
+        role: value.role,
+        photoUrl: record_opt_to_undefined(from_candid_opt_n15(_uploadFile, _downloadFile, value.photoUrl)),
+        address: value.address,
+        notes: value.notes,
+        phone: value.phone
+    };
 }
 function from_candid_record_n5(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
     success: [] | [boolean];
@@ -217,11 +704,53 @@ function from_candid_record_n5(_uploadFile: (file: ExternalBlob) => Promise<Uint
         topped_up_amount: record_opt_to_undefined(from_candid_opt_n7(_uploadFile, _downloadFile, value.topped_up_amount))
     };
 }
+function from_candid_vec_n12(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: Array<_Job>): Array<Job> {
+    return value.map((x)=>from_candid_Job_n13(_uploadFile, _downloadFile, x));
+}
+function from_candid_vec_n16(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: Array<_Staff>): Array<Staff> {
+    return value.map((x)=>from_candid_Staff_n17(_uploadFile, _downloadFile, x));
+}
+function to_candid_Job_n8(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: Job): _Job {
+    return to_candid_record_n9(_uploadFile, _downloadFile, value);
+}
+function to_candid_Staff_n10(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: Staff): _Staff {
+    return to_candid_record_n11(_uploadFile, _downloadFile, value);
+}
 function to_candid__CaffeineStorageRefillInformation_n2(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _CaffeineStorageRefillInformation): __CaffeineStorageRefillInformation {
     return to_candid_record_n3(_uploadFile, _downloadFile, value);
 }
 function to_candid_opt_n1(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _CaffeineStorageRefillInformation | null): [] | [__CaffeineStorageRefillInformation] {
     return value === null ? candid_none() : candid_some(to_candid__CaffeineStorageRefillInformation_n2(_uploadFile, _downloadFile, value));
+}
+function to_candid_record_n11(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
+    id: string;
+    name: string;
+    createdAt: bigint;
+    role: string;
+    photoUrl?: string;
+    address: string;
+    notes: string;
+    phone: string;
+}): {
+    id: string;
+    name: string;
+    createdAt: bigint;
+    role: string;
+    photoUrl: [] | [string];
+    address: string;
+    notes: string;
+    phone: string;
+} {
+    return {
+        id: value.id,
+        name: value.name,
+        createdAt: value.createdAt,
+        role: value.role,
+        photoUrl: value.photoUrl ? candid_some(value.photoUrl) : candid_none(),
+        address: value.address,
+        notes: value.notes,
+        phone: value.phone
+    };
 }
 function to_candid_record_n3(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
     proposed_top_up_amount?: bigint;
@@ -230,6 +759,69 @@ function to_candid_record_n3(_uploadFile: (file: ExternalBlob) => Promise<Uint8A
 } {
     return {
         proposed_top_up_amount: value.proposed_top_up_amount ? candid_some(value.proposed_top_up_amount) : candid_none()
+    };
+}
+function to_candid_record_n9(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
+    hp: string;
+    id: string;
+    acType: string;
+    customerName: string;
+    status: string;
+    photoUrls: Array<string>;
+    customerPhone: string;
+    date: string;
+    createdAt: bigint;
+    photoUrl?: string;
+    serviceFee: number;
+    updatedAt: bigint;
+    customerAddress: string;
+    notes: string;
+    deviceType: string;
+    assignedStaffIds: Array<string>;
+    brand: string;
+    problem: string;
+    gasType: string;
+}): {
+    hp: string;
+    id: string;
+    acType: string;
+    customerName: string;
+    status: string;
+    photoUrls: Array<string>;
+    customerPhone: string;
+    date: string;
+    createdAt: bigint;
+    photoUrl: [] | [string];
+    serviceFee: number;
+    updatedAt: bigint;
+    customerAddress: string;
+    notes: string;
+    deviceType: string;
+    assignedStaffIds: Array<string>;
+    brand: string;
+    problem: string;
+    gasType: string;
+} {
+    return {
+        hp: value.hp,
+        id: value.id,
+        acType: value.acType,
+        customerName: value.customerName,
+        status: value.status,
+        photoUrls: value.photoUrls,
+        customerPhone: value.customerPhone,
+        date: value.date,
+        createdAt: value.createdAt,
+        photoUrl: value.photoUrl ? candid_some(value.photoUrl) : candid_none(),
+        serviceFee: value.serviceFee,
+        updatedAt: value.updatedAt,
+        customerAddress: value.customerAddress,
+        notes: value.notes,
+        deviceType: value.deviceType,
+        assignedStaffIds: value.assignedStaffIds,
+        brand: value.brand,
+        problem: value.problem,
+        gasType: value.gasType
     };
 }
 export interface CreateActorOptions {

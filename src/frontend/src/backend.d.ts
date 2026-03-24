@@ -7,101 +7,93 @@ export interface None {
     __kind__: "None";
 }
 export type Option<T> = Some<T> | None;
-
-export interface BackendStaff {
+export interface PurchaseItem {
     id: string;
-    name: string;
-    role: string;
-    phone: string;
-    address: string;
-    notes: string;
-    photoUrl: [] | [string];
+    model: string;
+    supplierName: string;
+    date: string;
     createdAt: bigint;
-}
-
-export interface BackendJob {
-    id: string;
-    customerName: string;
-    customerPhone: string;
-    customerAddress: string;
+    notes: string;
+    quantity: bigint;
     deviceType: string;
     brand: string;
+    unitPrice: number;
+    totalPrice: number;
+}
+export interface Job {
     hp: string;
+    id: string;
     acType: string;
+    customerName: string;
+    status: string;
+    photoUrls: Array<string>;
+    customerPhone: string;
+    date: string;
+    createdAt: bigint;
+    photoUrl?: string;
+    serviceFee: number;
+    updatedAt: bigint;
+    customerAddress: string;
+    notes: string;
+    deviceType: string;
+    assignedStaffIds: Array<string>;
+    brand: string;
     problem: string;
     gasType: string;
-    status: string;
-    date: string;
-    assignedStaffIds: Array<string>;
-    serviceFee: number;
-    notes: string;
-    photoUrl: [] | [string];
-    photoUrls: Array<string>;
-    createdAt: bigint;
-    updatedAt: bigint;
 }
-
-export interface BackendCallLog {
+export interface Staff {
+    id: string;
+    name: string;
+    createdAt: bigint;
+    role: string;
+    photoUrl?: string;
+    address: string;
+    notes: string;
+    phone: string;
+}
+export interface CallLog {
     id: string;
     customerName: string;
+    context: string;
     customerPhone: string;
     calledAt: bigint;
-    context: string;
 }
-
-export interface BackendSaleItem {
+export interface SaleItem {
     id: string;
-    date: string;
-    deviceType: string;
-    brand: string;
-    model: string;
-    quantity: bigint;
-    unitPrice: number;
-    totalPrice: number;
     customerName: string;
-    notes: string;
-    createdAt: bigint;
-}
-
-export interface BackendPurchaseItem {
-    id: string;
+    model: string;
     date: string;
+    createdAt: bigint;
+    notes: string;
+    quantity: bigint;
     deviceType: string;
     brand: string;
-    model: string;
-    quantity: bigint;
     unitPrice: number;
     totalPrice: number;
-    supplierName: string;
-    notes: string;
-    createdAt: bigint;
 }
-
 export interface backendInterface {
-    getStaff: () => Promise<Array<BackendStaff>>;
-    addStaff: (item: BackendStaff) => Promise<undefined>;
-    updateStaff: (item: BackendStaff) => Promise<undefined>;
-    deleteStaff: (id: string) => Promise<undefined>;
-
-    getJobs: () => Promise<Array<BackendJob>>;
-    addJob: (item: BackendJob) => Promise<undefined>;
-    updateJob: (item: BackendJob) => Promise<undefined>;
-    deleteJob: (id: string) => Promise<undefined>;
-
-    getCallLogs: () => Promise<Array<BackendCallLog>>;
-    addCallLog: (item: BackendCallLog) => Promise<undefined>;
-    clearCallLogs: () => Promise<undefined>;
-
-    getSales: () => Promise<Array<BackendSaleItem>>;
-    addSale: (item: BackendSaleItem) => Promise<undefined>;
-    updateSale: (item: BackendSaleItem) => Promise<undefined>;
-    deleteSale: (id: string) => Promise<undefined>;
-
-    getPurchases: () => Promise<Array<BackendPurchaseItem>>;
-    addPurchase: (item: BackendPurchaseItem) => Promise<undefined>;
-    updatePurchase: (item: BackendPurchaseItem) => Promise<undefined>;
-    deletePurchase: (id: string) => Promise<undefined>;
-
-    getCredentials: () => Promise<{ username: string; password: string }>;
-    setCredentials: (username: string, password: string) => Promise<undefined>;
+    addCallLog(item: CallLog): Promise<void>;
+    addJob(item: Job): Promise<void>;
+    addPurchase(item: PurchaseItem): Promise<void>;
+    addSale(item: SaleItem): Promise<void>;
+    addStaff(item: Staff): Promise<void>;
+    clearCallLogs(): Promise<void>;
+    deleteJob(id: string): Promise<void>;
+    deletePurchase(id: string): Promise<void>;
+    deleteSale(id: string): Promise<void>;
+    deleteStaff(id: string): Promise<void>;
+    getCallLogs(): Promise<Array<CallLog>>;
+    getCredentials(): Promise<{
+        username: string;
+        password: string;
+    }>;
+    getJobs(): Promise<Array<Job>>;
+    getPurchases(): Promise<Array<PurchaseItem>>;
+    getSales(): Promise<Array<SaleItem>>;
+    getStaff(): Promise<Array<Staff>>;
+    setCredentials(username: string, password: string): Promise<void>;
+    updateJob(item: Job): Promise<void>;
+    updatePurchase(item: PurchaseItem): Promise<void>;
+    updateSale(item: SaleItem): Promise<void>;
+    updateStaff(item: Staff): Promise<void>;
 }
