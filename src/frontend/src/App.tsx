@@ -20,7 +20,7 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { Toaster } from "@/components/ui/sonner";
 import { Textarea } from "@/components/ui/textarea";
-import jsPDF from "jspdf";
+// jsPDF loaded dynamically from CDN (see loadJsPDF helper below)
 import {
   BarChart2,
   Briefcase,
@@ -68,23 +68,9 @@ import {
   YAxis,
 } from "recharts";
 import { toast } from "sonner";
+import { getBackend } from "./backendService";
 import { type TKey, t } from "./i18n";
-import {
-  formatMMK,
-  generateId,
-  loadCallLogs,
-  loadJobs,
-  loadLanguage,
-  loadPurchases,
-  loadSales,
-  loadStaff,
-  saveCallLogs,
-  saveJobs,
-  saveLanguage,
-  savePurchases,
-  saveSales,
-  saveStaff,
-} from "./storage";
+import { formatMMK, generateId, loadLanguage, saveLanguage } from "./storage";
 import type {
   CallLog,
   Job,
@@ -94,8 +80,106 @@ import type {
   Staff,
 } from "./types";
 
+// ─── jsPDF CDN Loader ────────────────────────────────────────────────────────
+let _jsPDFPromise: Promise<any> | null = null;
+function loadJsPDF(): Promise<any> {
+  if (_jsPDFPromise) return _jsPDFPromise;
+  _jsPDFPromise = new Promise((resolve, reject) => {
+    if ((window as any).jspdf) {
+      resolve((window as any).jspdf.jsPDF);
+      return;
+    }
+    const script = document.createElement("script");
+    script.src =
+      "https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js";
+    script.onload = () => resolve((window as any).jspdf.jsPDF);
+    script.onerror = reject;
+    document.head.appendChild(script);
+  });
+  return _jsPDFPromise;
+}
+
 // ─── Auth Helpers ────────────────────────────────────────────────────────────
 const DEFAULT_CREDENTIALS = { username: "Oasis", password: "oasis2000" };
+
+// ─── Backend Converters ────────────────────────────────────────────────────
+function jobToBackend(j: Job) {
+  return {
+    ...j,
+    assignedStaffIds: j.assignedStaffIds,
+    photoUrl: j.photoUrl ? ([j.photoUrl] as [string]) : ([] as []),
+    photoUrls: j.photoUrls ?? [],
+    serviceFee: j.serviceFee,
+    createdAt: BigInt(j.createdAt),
+    updatedAt: BigInt(j.updatedAt),
+  };
+}
+function jobFromBackend(j: any): Job {
+  return {
+    ...j,
+    photoUrl: j.photoUrl?.[0] ?? undefined,
+    photoUrls: j.photoUrls ?? [],
+    serviceFee: Number(j.serviceFee),
+    createdAt: Number(j.createdAt),
+    updatedAt: Number(j.updatedAt),
+  };
+}
+function staffToBackend(s: Staff) {
+  return {
+    ...s,
+    photoUrl: s.photoUrl ? ([s.photoUrl] as [string]) : ([] as []),
+    createdAt: BigInt(s.createdAt),
+  };
+}
+function staffFromBackend(s: any): Staff {
+  return {
+    ...s,
+    photoUrl: s.photoUrl?.[0] ?? undefined,
+    createdAt: Number(s.createdAt),
+  };
+}
+function saleToBackend(s: SaleItem) {
+  return {
+    ...s,
+    quantity: BigInt(s.quantity),
+    unitPrice: Number(s.unitPrice),
+    totalPrice: Number(s.totalPrice),
+    createdAt: BigInt(s.createdAt),
+  };
+}
+function saleFromBackend(s: any): SaleItem {
+  return {
+    ...s,
+    quantity: Number(s.quantity),
+    unitPrice: Number(s.unitPrice),
+    totalPrice: Number(s.totalPrice),
+    createdAt: Number(s.createdAt),
+  };
+}
+function purchaseToBackend(p: PurchaseItem) {
+  return {
+    ...p,
+    quantity: BigInt(p.quantity),
+    unitPrice: Number(p.unitPrice),
+    totalPrice: Number(p.totalPrice),
+    createdAt: BigInt(p.createdAt),
+  };
+}
+function purchaseFromBackend(p: any): PurchaseItem {
+  return {
+    ...p,
+    quantity: Number(p.quantity),
+    unitPrice: Number(p.unitPrice),
+    totalPrice: Number(p.totalPrice),
+    createdAt: Number(p.createdAt),
+  };
+}
+function callLogToBackend(c: CallLog) {
+  return { ...c, calledAt: BigInt(c.calledAt) };
+}
+function callLogFromBackend(c: any): CallLog {
+  return { ...c, calledAt: Number(c.calledAt) };
+}
 
 function loadCredentials(): { username: string; password: string } {
   try {
@@ -113,6 +197,9 @@ function saveCredentials(creds: { username: string; password: string }) {
       password: creds.password.trim(),
     }),
   );
+  getBackend()
+    .then((b) => b.setCredentials(creds.username.trim(), creds.password.trim()))
+    .catch(() => {});
 }
 
 function isLoggedIn(): boolean {
@@ -1569,7 +1656,9 @@ function JobsTab({
     };
     const updated = [newJob, ...jobs];
     onJobsChange(updated);
-    saveJobs(updated);
+    getBackend()
+      .then((b) => b.addJob(jobToBackend(newJob)))
+      .catch(() => {});
     setShowAdd(false);
     toast.success("Job added!");
   }
@@ -1580,7 +1669,15 @@ function JobsTab({
       j.id === editJob.id ? { ...editJob, ...data, updatedAt: Date.now() } : j,
     );
     onJobsChange(updated);
-    saveJobs(updated);
+    const updatedJobItem = jobs.find((j) => j.id === editJob.id);
+    if (updatedJobItem)
+      getBackend()
+        .then((b) =>
+          b.updateJob(
+            jobToBackend({ ...editJob, ...data, updatedAt: Date.now() }),
+          ),
+        )
+        .catch(() => {});
     setEditJob(null);
     setViewJob(null);
     toast.success("Job updated!");
@@ -1589,10 +1686,78 @@ function JobsTab({
   function deleteJob(id: string) {
     const updated = jobs.filter((j) => j.id !== id);
     onJobsChange(updated);
-    saveJobs(updated);
+    getBackend()
+      .then((b) => b.deleteJob(id))
+      .catch(() => {});
     setViewJob(null);
     setDeleteId(null);
     toast.success("Job deleted!");
+  }
+
+  async function exportJobsPDF() {
+    const JsPDF = await loadJsPDF();
+    const doc = new JsPDF();
+    const pageW = doc.internal.pageSize.getWidth();
+    let y = 20;
+
+    doc.setFontSize(16);
+    doc.setFont("helvetica", "bold");
+    doc.text("Oasis AC Service - Jobs List", pageW / 2, y, { align: "center" });
+    y += 10;
+
+    doc.setFontSize(10);
+    doc.setFont("helvetica", "normal");
+    const dateRange =
+      fromDate || toDate
+        ? `Date: ${fromDate || "..."} ~ ${toDate || "..."}`
+        : "All Jobs";
+    doc.text(dateRange, pageW / 2, y, { align: "center" });
+    y += 6;
+    doc.text(`Total: ${filtered.length} jobs`, pageW / 2, y, {
+      align: "center",
+    });
+    y += 10;
+
+    // Table header
+    doc.setFillColor(34, 197, 94);
+    doc.rect(14, y, pageW - 28, 8, "F");
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(8);
+    doc.text("Date", 16, y + 5.5);
+    doc.text("Customer", 36, y + 5.5);
+    doc.text("Phone", 80, y + 5.5);
+    doc.text("Device", 108, y + 5.5);
+    doc.text("Status", 148, y + 5.5);
+    doc.text("Fee (MMK)", 168, y + 5.5);
+    y += 10;
+
+    doc.setTextColor(0, 0, 0);
+    doc.setFont("helvetica", "normal");
+    filtered.forEach((j, i) => {
+      if (y > 270) {
+        doc.addPage();
+        y = 20;
+      }
+      if (i % 2 === 0) {
+        doc.setFillColor(240, 253, 244);
+        doc.rect(14, y - 4, pageW - 28, 8, "F");
+      }
+      doc.setFontSize(8);
+      doc.text((j.date || "").substring(0, 10), 16, y);
+      doc.text((j.customerName || "").substring(0, 18), 36, y);
+      doc.text((j.customerPhone || "").substring(0, 12), 80, y);
+      const dev = (
+        deviceLabel(j.deviceType, tr) + (j.brand ? ` ${j.brand}` : "")
+      ).substring(0, 18);
+      doc.text(dev, 108, y);
+      doc.text(j.status || "", 148, y);
+      doc.text(formatMMK(j.serviceFee), 165, y);
+      y += 8;
+    });
+
+    const today = new Date().toISOString().slice(0, 10);
+    doc.save(`oasis-jobs-${today}.pdf`);
+    toast.success("Jobs PDF exported!");
   }
 
   return (
@@ -1644,10 +1809,24 @@ function JobsTab({
         )}
       </div>
 
-      {/* Job count */}
-      <p className="text-xs text-muted-foreground">
-        {filtered.length} {tr("totalJobs").toLowerCase()}
-      </p>
+      {/* Job count + PDF */}
+      <div className="flex items-center justify-between">
+        <p className="text-xs text-muted-foreground">
+          {filtered.length} {tr("totalJobs").toLowerCase()}
+        </p>
+        {filtered.length > 0 && (
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-7 text-xs gap-1 border-green-500 text-green-700 hover:bg-green-50"
+            onClick={exportJobsPDF}
+            data-ocid="jobs.export_pdf_button"
+          >
+            <Download size={13} />
+            PDF
+          </Button>
+        )}
+      </div>
 
       {/* Job list */}
       <AnimatePresence mode="popLayout">
@@ -1804,7 +1983,9 @@ function StaffTab({
     };
     const updated = [...staffList, newStaff];
     onStaffChange(updated);
-    saveStaff(updated);
+    getBackend()
+      .then((b) => b.addStaff(staffToBackend(newStaff)))
+      .catch(() => {});
     setShowAdd(false);
     toast.success("Staff added!");
   }
@@ -1815,7 +1996,9 @@ function StaffTab({
       s.id === editStaff.id ? { ...editStaff, ...data } : s,
     );
     onStaffChange(updated);
-    saveStaff(updated);
+    getBackend()
+      .then((b) => b.updateStaff(staffToBackend({ ...editStaff, ...data })))
+      .catch(() => {});
     setEditStaff(null);
     setViewStaff(null);
     toast.success("Staff updated!");
@@ -1824,7 +2007,9 @@ function StaffTab({
   function deleteStaff(id: string) {
     const updated = staffList.filter((s) => s.id !== id);
     onStaffChange(updated);
-    saveStaff(updated);
+    getBackend()
+      .then((b) => b.deleteStaff(id))
+      .catch(() => {});
     setViewStaff(null);
     setDeleteId(null);
     toast.success("Staff deleted!");
@@ -2168,8 +2353,9 @@ function ReportsTab({ jobs }: { jobs: Job[] }) {
     } else setMonth((m) => m + 1);
   }
 
-  function exportReport() {
-    const doc = new jsPDF();
+  async function exportReport() {
+    const JsPDF = await loadJsPDF();
+    const doc = new JsPDF();
     const pageW = doc.internal.pageSize.getWidth();
     let y = 20;
 
@@ -2611,7 +2797,9 @@ function SettingsTab({
         <CardContent className="p-4">
           <div className="flex items-center gap-3 mb-3">
             <Info size={18} className="text-primary" />
-            <p className="font-semibold text-sm">{tr("appInfo")}</p>
+            <p className="font-semibold text-sm">
+              {lang === "my" ? "အက်ပ် အကြောင်း" : "App Information"}
+            </p>
           </div>
           <div className="space-y-3">
             <div className="flex justify-between">
@@ -2634,6 +2822,162 @@ function SettingsTab({
               </span>
               <span className="text-xs font-medium">Zwe Maung Maung</span>
             </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Features List */}
+      <Card className="border-border shadow-xs">
+        <CardContent className="p-4">
+          <div className="flex items-center gap-3 mb-4">
+            <CheckCircle2 size={18} className="text-primary" />
+            <p className="font-semibold text-sm">
+              {lang === "my" ? "App လုပ်ဆောင်ချက်များ" : "App Features"}
+            </p>
+          </div>
+          <div className="space-y-3">
+            {[
+              {
+                icon: (
+                  <Briefcase
+                    size={15}
+                    className="text-primary shrink-0 mt-0.5"
+                  />
+                ),
+                en: "Job Management",
+                my: "လုပ်ငန်း မှတ်တမ်း",
+                desc:
+                  lang === "my"
+                    ? "AC, ရေခဲသေတ္တာ, အဝတ်လျှော်စက် ပြုပြင်မှတ်တမ်း"
+                    : "AC, Fridge, Washing Machine service records",
+              },
+              {
+                icon: (
+                  <Users size={15} className="text-primary shrink-0 mt-0.5" />
+                ),
+                en: "Staff Management",
+                my: "ဝန်ထမ်း စီမံခန့်ခွဲမှု",
+                desc:
+                  lang === "my"
+                    ? "ဝန်ထမ်းအချက်အလက်, ဓာတ်ပုံ, လုပ်ငန်းသမိုင်း"
+                    : "Staff profiles, photos, job history, roles",
+              },
+              {
+                icon: (
+                  <User size={15} className="text-primary shrink-0 mt-0.5" />
+                ),
+                en: "Customer Records",
+                my: "ဖောက်သည် မှတ်တမ်း",
+                desc:
+                  lang === "my"
+                    ? "ဖုန်းနံပါတ်ဖြင့် သမိုင်းရှာဖွေမှု, ဖုန်းခေါ်ဆိုမှတ်တမ်း"
+                    : "Phone-based history lookup, call logs",
+              },
+              {
+                icon: (
+                  <ShoppingBag
+                    size={15}
+                    className="text-primary shrink-0 mt-0.5"
+                  />
+                ),
+                en: "Inventory",
+                my: "ကုန်ပစ္စည်း",
+                desc:
+                  lang === "my"
+                    ? "အရောင်းစာရင်း နှင့် အဝယ်စာရင်း (MMK)"
+                    : "Sales & purchase records with MMK totals",
+              },
+              {
+                icon: (
+                  <BarChart2
+                    size={15}
+                    className="text-primary shrink-0 mt-0.5"
+                  />
+                ),
+                en: "Reports",
+                my: "အစီရင်ခံစာ",
+                desc:
+                  lang === "my"
+                    ? "လစဉ်/အပတ်စဉ် chart, PDF ထုတ်ယူနိုင်"
+                    : "Monthly/weekly charts, PDF export",
+              },
+              {
+                icon: (
+                  <Globe size={15} className="text-primary shrink-0 mt-0.5" />
+                ),
+                en: "Multi-device Sync",
+                my: "စက်ပစ္စည်းအားလုံး sync",
+                desc:
+                  lang === "my"
+                    ? "Link တစ်ခုတည်းမှ ဖုန်းတိုင်း data တူညီ"
+                    : "All devices see the same data via one link",
+              },
+              {
+                icon: (
+                  <Download
+                    size={15}
+                    className="text-primary shrink-0 mt-0.5"
+                  />
+                ),
+                en: "PDF Export",
+                my: "PDF ထုတ်ယူ",
+                desc:
+                  lang === "my"
+                    ? "Jobs, Inventory, Report တို့ PDF ဆွဲနိုင်"
+                    : "One-click PDF for jobs, inventory, reports",
+              },
+              {
+                icon: (
+                  <Phone size={15} className="text-primary shrink-0 mt-0.5" />
+                ),
+                en: "Direct Call",
+                my: "တိုက်ရိုက်ဖုန်းခေါ်",
+                desc:
+                  lang === "my"
+                    ? "ဖောက်သည်/ဝန်ထမ်း ဖုန်းနံပါတ် နှိပ်ပြီး ခေါ်နိုင်"
+                    : "Tap any phone number to call directly",
+              },
+              {
+                icon: (
+                  <Moon size={15} className="text-primary shrink-0 mt-0.5" />
+                ),
+                en: "Dark / Light Mode",
+                my: "အမှောင်/အလင်း မုဒ်",
+                desc:
+                  lang === "my"
+                    ? "မျက်နှာပြင် ရောင်ချောင်မျိုး ရွေးချယ်နိုင်"
+                    : "Switch display theme anytime",
+              },
+              {
+                icon: (
+                  <ShieldCheck
+                    size={15}
+                    className="text-primary shrink-0 mt-0.5"
+                  />
+                ),
+                en: "Secure Login",
+                my: "လုံခြုံသောဝင်ရောက်မှု",
+                desc:
+                  lang === "my"
+                    ? "Username/Password ဝင်ရောက် + Session မှတ်သား"
+                    : "Username/password auth with persistent session",
+              },
+            ].map((feat) => (
+              <div
+                key={feat.en}
+                className="flex gap-3 py-1.5 border-b border-border last:border-0"
+              >
+                {feat.icon}
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-semibold text-foreground">
+                    {lang === "my" ? feat.my : feat.en}
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">
+                    {feat.desc}
+                  </p>
+                </div>
+              </div>
+            ))}
           </div>
         </CardContent>
       </Card>
@@ -2840,8 +3184,12 @@ function InventoryTab({
         const updated = sales.map((s) =>
           s.id === editingItem.id ? { ...s, ...f, totalPrice } : s,
         );
-        saveSales(updated);
         setSales(updated);
+        const item = updated.find((s) => s.id === editingItem.id);
+        if (item)
+          getBackend()
+            .then((b) => b.updateSale(saleToBackend(item)))
+            .catch(() => {});
       } else {
         const newItem: SaleItem = {
           id: generateId(),
@@ -2850,8 +3198,10 @@ function InventoryTab({
           createdAt: Date.now(),
         };
         const updated = [newItem, ...sales];
-        saveSales(updated);
         setSales(updated);
+        getBackend()
+          .then((b) => b.addSale(saleToBackend(newItem)))
+          .catch(() => {});
       }
     } else {
       const f = form as typeof emptyPurchaseForm;
@@ -2859,8 +3209,12 @@ function InventoryTab({
         const updated = purchases.map((p) =>
           p.id === editingItem.id ? { ...p, ...f, totalPrice } : p,
         );
-        savePurchases(updated);
         setPurchases(updated);
+        const item = updated.find((p) => p.id === editingItem.id);
+        if (item)
+          getBackend()
+            .then((b) => b.updatePurchase(purchaseToBackend(item)))
+            .catch(() => {});
       } else {
         const newItem: PurchaseItem = {
           id: generateId(),
@@ -2869,8 +3223,10 @@ function InventoryTab({
           createdAt: Date.now(),
         };
         const updated = [newItem, ...purchases];
-        savePurchases(updated);
         setPurchases(updated);
+        getBackend()
+          .then((b) => b.addPurchase(purchaseToBackend(newItem)))
+          .catch(() => {});
       }
     }
     setDialogOpen(false);
@@ -2880,12 +3236,16 @@ function InventoryTab({
     if (!window.confirm(tr("deleteConfirm"))) return;
     if (subTab === "sales") {
       const updated = sales.filter((s) => s.id !== id);
-      saveSales(updated);
       setSales(updated);
+      getBackend()
+        .then((b) => b.deleteSale(id))
+        .catch(() => {});
     } else {
       const updated = purchases.filter((p) => p.id !== id);
-      savePurchases(updated);
       setPurchases(updated);
+      getBackend()
+        .then((b) => b.deletePurchase(id))
+        .catch(() => {});
     }
   }
 
@@ -2910,8 +3270,9 @@ function InventoryTab({
     return tr("washingMachine");
   };
 
-  function exportInventoryPDF() {
-    const doc = new jsPDF();
+  async function exportInventoryPDF() {
+    const JsPDF = await loadJsPDF();
+    const doc = new JsPDF();
     const pageW = doc.internal.pageSize.getWidth();
     const isSales = subTab === "sales";
     const items = isSales ? sortedSales : sortedPurchases;
@@ -3369,13 +3730,12 @@ export default function App() {
     return (localStorage.getItem("theme") as "light" | "dark") ?? "light";
   });
   const [tab, setTab] = useState<Tab>("home");
-  const [jobs, setJobs] = useState<Job[]>(() => loadJobs());
-  const [staffList, setStaffList] = useState<Staff[]>(() => loadStaff());
-  const [sales, setSales] = useState<SaleItem[]>(() => loadSales());
-  const [purchases, setPurchases] = useState<PurchaseItem[]>(() =>
-    loadPurchases(),
-  );
-  const [callLogs, setCallLogs] = useState<CallLog[]>(() => loadCallLogs());
+  const [jobs, setJobs] = useState<Job[]>([]);
+  const [staffList, setStaffList] = useState<Staff[]>([]);
+  const [sales, setSales] = useState<SaleItem[]>([]);
+  const [purchases, setPurchases] = useState<PurchaseItem[]>([]);
+  const [callLogs, setCallLogs] = useState<CallLog[]>([]);
+  const [dataLoading, setDataLoading] = useState(true);
 
   const tr = (k: TKey) => t[lang][k] ?? t.en[k] ?? k;
 
@@ -3393,12 +3753,16 @@ export default function App() {
     };
     const updated = [log, ...callLogs].slice(0, 200);
     setCallLogs(updated);
-    saveCallLogs(updated);
+    getBackend()
+      .then((b) => b.addCallLog(callLogToBackend(log)))
+      .catch(() => {});
   }
 
   function clearCallLogs() {
     setCallLogs([]);
-    saveCallLogs([]);
+    getBackend()
+      .then((b) => b.clearCallLogs())
+      .catch(() => {});
   }
 
   function handleLogout() {
@@ -3429,6 +3793,50 @@ export default function App() {
     }
   }, [theme]);
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: getBackend is a stable module singleton
+  useEffect(() => {
+    if (!loggedIn) return;
+    let cancelled = false;
+    async function fetchAll() {
+      try {
+        const b = await getBackend();
+        const [bJobs, bStaff, bSales, bPurchases, bCallLogs, bCreds] =
+          await Promise.all([
+            b.getJobs(),
+            b.getStaff(),
+            b.getSales(),
+            b.getPurchases(),
+            b.getCallLogs(),
+            b.getCredentials(),
+          ]);
+        if (cancelled) return;
+        setJobs(bJobs.map(jobFromBackend));
+        setStaffList(bStaff.map(staffFromBackend));
+        setSales(bSales.map(saleFromBackend));
+        setPurchases(bPurchases.map(purchaseFromBackend));
+        setCallLogs(bCallLogs.map(callLogFromBackend));
+        // Sync credentials from backend to localStorage
+        if (bCreds.username && bCreds.password) {
+          localStorage.setItem(
+            "oasis_credentials",
+            JSON.stringify({
+              username: bCreds.username,
+              password: bCreds.password,
+            }),
+          );
+        }
+      } catch (err) {
+        console.error("Failed to load data from backend", err);
+      } finally {
+        if (!cancelled) setDataLoading(false);
+      }
+    }
+    fetchAll();
+    return () => {
+      cancelled = true;
+    };
+  }, [loggedIn]);
+
   const navItems: { id: Tab; icon: React.ReactNode; label: TKey }[] = [
     { id: "home", icon: <Home size={20} />, label: "home" },
     { id: "jobs", icon: <Briefcase size={20} />, label: "jobs" },
@@ -3440,6 +3848,18 @@ export default function App() {
 
   if (!loggedIn) {
     return <LoginScreen onLogin={() => setLoggedIn(true)} />;
+  }
+
+  if (dataLoading) {
+    return (
+      <div className="min-h-screen bg-background flex flex-col items-center justify-center gap-3">
+        <div className="w-12 h-12 rounded-2xl bg-primary flex items-center justify-center shadow-lg animate-pulse">
+          <Wrench size={22} className="text-primary-foreground" />
+        </div>
+        <p className="text-sm text-muted-foreground">ဒေတာ လဝင်နေသည်...</p>
+        <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
   }
 
   return (
